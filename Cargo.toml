@@ -1,0 +1,7 @@
+[package]
+name = "av1-enc"
+version = "0.0.1"
+authors = [ "hjmkt <hjmkt3126@gmail.com>" ]
+
+[dependencies]
+num = "*"
