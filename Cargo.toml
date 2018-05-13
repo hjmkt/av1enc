@@ -5,3 +5,5 @@ authors = [ "hjmkt <hjmkt3126@gmail.com>" ]
 
 [dependencies]
 num = "*"
+lazy_static = "*"
+colored = "*"
