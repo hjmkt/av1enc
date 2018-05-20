@@ -5,8 +5,8 @@ use std::str::FromStr;
 use std::process;
 
 pub struct Config {
-    input: Option<String>,
-    output: Option<String>,
+    pub input: Option<String>,
+    pub output: Option<String>,
     frame_width: Option<u16>,
     frame_height: Option<u16>,
     framerate: Option<Ratio<u16>>,
@@ -64,10 +64,14 @@ lazy_static! {
             usage: "input path or 'stdin' for standard input",
             default: None,
             parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
+                if args.len() == 0 { return Err("".to_string()); }
                 config.input = Some(args[0].clone());
-                Ok(vec![])
+                Ok(args[1..].to_vec())
             },
-            validator: | _config | -> Result<i32, String>  { Ok(0) }
+            validator: | config: &Config | -> Result<i32, String>  {
+                if let Some(_) = config.input { Ok(0) }
+                else { Err("input not specified.".to_string()) }
+            }
         },
         CommandOption {
             name: "output",
@@ -75,10 +79,14 @@ lazy_static! {
             usage: "output path or 'stdout' for standard output",
             default: None,
             parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
+                if args.len() == 0 { return Err("".to_string()); }
                 config.output = Some(args[0].clone());
-                Ok(vec![])
+                Ok(args[1..].to_vec())
             },
-            validator: | _config | -> Result<i32, String>  { Ok(0) }
+            validator: | config: &Config | -> Result<i32, String>  {
+                if let Some(_) = config.output { Ok(0) }
+                else { Err("output not specified.".to_string()) }
+            }
         },
         CommandOption {
             name: "size",
@@ -86,6 +94,7 @@ lazy_static! {
             usage: "video resolution (WxH)",
             default: None,
             parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
+                if args.len() == 0 { return Err("".to_string()); }
                 if let Err(e) = CommandOption::parse_tuple::<u16>(&args[0], 'x', 2, &mut [&mut config.frame_width, &mut config.frame_height]) { Err(e) }
                 else { Ok(args[1..].to_vec()) }
             },
@@ -94,7 +103,7 @@ lazy_static! {
                     if w>0 && w<8192 && h>0 && h<8192 { Ok(0) }
                     else { Err("invalid video resolution specified.".to_string()) }
                 }
-                else { Err("Video resolution not specified.".to_string()) }
+                else { Err("video resolution not specified.".to_string()) }
             }
         },
         CommandOption {
@@ -103,6 +112,7 @@ lazy_static! {
             usage: "video frame rate (N/D, or N for N/1)",
             default: Some("30/1"),
             parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
+                if args.len() == 0 { return Err("".to_string()); }
                 if let Ok(n) = u16::from_str(&args[0]) {
                     config.framerate = Some(Ratio::new(n, 1));
                     Ok(args[1..].to_vec())
@@ -132,7 +142,12 @@ impl CommandOption {
         for opt in OPTIONS.iter() {
             if opt.name == name { return match (opt.parser)(&args, config) {
                 Ok(v) => Ok(v),
-                Err(e) => Err(format!("invalid argument '{}' for option '--{}': {}", args[0], name, e))
+                Err(e) => if args.len() > 0 {
+                    Err(format!("invalid argument '{}' for option '--{}': {}", args[0], name, e))
+                }
+                else {
+                    Err(format!("argument not specified for option '--{}': '{}'", name, e))
+                }
             }}
         }
         Err(format!("option '--{}' not found.", name))
@@ -142,7 +157,12 @@ impl CommandOption {
         for opt in OPTIONS.iter() {
             if opt.short_name == Some(name) { return match (opt.parser)(&args, config) {
                 Ok(v) => Ok(v),
-                Err(e) => Err(format!("invalid argument '{}' for option '-{}': {}", args[0], name, e))
+                Err(e) => if args.len() > 0 {
+                    Err(format!("invalid argument '{}' for option '-{}': {}", args[0], name, e))
+                }
+                else {
+                    Err(format!("argument not specified for option '-{}'", name))
+                }
             }}
         }
         Err(format!("option '-{}' not found.", name))
