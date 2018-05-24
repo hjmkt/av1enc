@@ -11,6 +11,12 @@ use binary_reader::BinaryReader;
 use binary_writer::BinaryWriter;
 use std::io::{self, Read, Write};
 
+mod constants;
+mod sequence_header;
+mod obu;
+mod frame_header;
+
+
 fn main() {
 
     println!("{} version {} Copyright (c) 2018-2018 {}", env!("CARGO_PKG_NAME").to_string(), env!("CARGO_PKG_VERSION").to_string(), env!("CARGO_PKG_AUTHORS"));
@@ -46,9 +52,6 @@ fn main() {
         }
     };
 
-    let mut buf: [u8; 3] = [0, 1, 2];
-    reader.read(&mut buf);
-
     // initialize binary writer
     let stdout = io::stdout();
     let mut writer = if config.output == Some("stdout".to_string()) {
@@ -64,5 +67,5 @@ fn main() {
         }
     };
 
-    writer.write(&buf);
+    
 }
