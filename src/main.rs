@@ -1,3 +1,7 @@
+#![allow(unused_imports)]
+#![allow(unused_variables)]
+#![allow(unused_mut)]
+
 #[macro_use]
 extern crate lazy_static;
 extern crate colored;
@@ -15,6 +19,8 @@ mod constants;
 mod sequence_header;
 mod obu;
 mod frame_header;
+mod util;
+mod frame;
 
 
 fn main() {
@@ -35,7 +41,6 @@ fn main() {
         println!("{}: invalid configuration: {}", "error".red(), e);
         process::exit(0);
     }
-
 
     // initialize binary reader
     let stdin = io::stdin();

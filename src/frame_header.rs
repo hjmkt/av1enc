@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use sequence_header::DecoderModelInfo;
 use constants::FrameType;
 use constants::*;
@@ -6,12 +8,12 @@ struct TemporalPointInfo {
     tu_presentation_delay: u32 // TODO
 }
 
-struct TileInfo {
+pub struct TileInfo {
     uniform_tile_spacing_flag: bool,
     // TODO
 }
 
-struct QuantizationParams {
+pub struct QuantizationParams {
     base_q_idx: u8,
     delta_q: Option<u8>,
     diff_uv_delta: bool,
@@ -21,7 +23,7 @@ struct QuantizationParams {
     qm_v: u8,
 }
 
-struct SegmentationParams {
+pub struct SegmentationParams {
     segmentation_enabled: bool,
     segmentation_update_map: bool,
     segmentation_temporal_update: bool,
@@ -29,18 +31,18 @@ struct SegmentationParams {
     feature_value: [[Option<bool>; SEG_LVL_MAX as usize]; MAX_SEGMENTS as usize],
 }
 
-struct DeltaQParams {
+pub struct DeltaQParams {
     delta_q_present: bool,
     delta_q_res: u8
 }
 
-struct DeltaLFParams {
+pub struct DeltaLFParams {
     delta_lf_present: bool,
     delta_lf_res: u8,
     delta_lf_multi: bool
 }
 
-struct LoopFilterParams {
+pub struct LoopFilterParams {
     loop_filter_level: [u8; 4],
     loop_filter_sharpness: u8,
     loop_filter_delta_enabled: bool,
@@ -51,7 +53,7 @@ struct LoopFilterParams {
     loop_filter_mode_deltas: [u8; 2]
 }
 
-struct CDEFParams {
+pub struct CDEFParams {
     cdef_damping: u8,
     cdef_bits: u8,
     cdef_y_pri_strength: Vec<u8>,
@@ -60,20 +62,20 @@ struct CDEFParams {
     cdef_uv_sec_strength: Vec<u8>
 }
 
-struct LRParams {
+pub struct LRParams {
     lr_type: u8,
     lr_unit_shift: bool,
     lr_unit_extra_shift: bool,
     lr_uv_shift: bool,
 }
 
-struct GlobalMotionParams {
+pub struct GlobalMotionParams {
     is_global: [bool; NUM_REF_FRAMES as usize],
     is_rot_zoom: [bool; NUM_REF_FRAMES as usize],
     is_translation: [bool; NUM_REF_FRAMES as usize],
 }
 
-struct FilmGrainParams {
+pub struct FilmGrainParams {
     apply_grain: bool,
     grain_seed: u16,
     update_grain: bool,

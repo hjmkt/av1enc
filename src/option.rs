@@ -7,9 +7,10 @@ use std::process;
 pub struct Config {
     pub input: Option<String>,
     pub output: Option<String>,
-    frame_width: Option<u16>,
-    frame_height: Option<u16>,
-    framerate: Option<Ratio<u16>>,
+    pub frame_width: Option<u16>,
+    pub frame_height: Option<u16>,
+    pub framerate: Option<Ratio<u16>>,
+    pub frames: Option<u32>,
 }
 
 impl Default for Config {
@@ -18,7 +19,8 @@ impl Default for Config {
         output: None,
         frame_width: None,
         frame_height: None,
-        framerate: None
+        framerate: None,
+        frames: None,
     }}
 }
 
@@ -45,6 +47,41 @@ impl<'a> CommandOption {
     }
 }
 
+macro_rules! parser_string {
+    ($target: ident) => {
+        | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
+            if args.len() == 0 { return Err("".to_string()); }
+            config.$target = Some(args[0].clone());
+            Ok(args[1..].to_vec())
+        }
+    };
+}
+
+macro_rules! parser_num {
+    ($type: ident, $target: ident) => {
+        | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
+            if args.len() == 0 { return Err("".to_string()); }
+            if let Err(e) = CommandOption::parse_tuple::<$type>(&args[0], ' ', 1, &mut [&mut config.$target]) { Err(e) }
+            else { Ok(args[1..].to_vec()) }
+        }
+    };
+}
+
+macro_rules! validator_skip {
+    () => {
+        | _config | -> Result<i32, String>  { Ok(0) }
+    };
+}
+
+macro_rules! validator_default {
+    ($target: ident) => {
+        | config: &Config | -> Result<i32, String>  {
+            if let Some(_) = config.$target { Ok(0) }
+            else { Err(stringify!($target not specified.).to_string()) }
+        }
+    };
+}
+
 lazy_static! {
     static ref OPTIONS : Vec<CommandOption> = vec![
         CommandOption {
@@ -56,37 +93,31 @@ lazy_static! {
                 CommandOption::show_help_and_exit();
                 Ok(vec![])
             },
-            validator: | _config | -> Result<i32, String>  { Ok(0) }
+            validator: validator_skip!()
         },
         CommandOption {
             name: "input",
             short_name: Some("i"),
             usage: "input path or 'stdin' for standard input",
             default: None,
-            parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
-                if args.len() == 0 { return Err("".to_string()); }
-                config.input = Some(args[0].clone());
-                Ok(args[1..].to_vec())
-            },
-            validator: | config: &Config | -> Result<i32, String>  {
-                if let Some(_) = config.input { Ok(0) }
-                else { Err("input not specified.".to_string()) }
-            }
+            parser: parser_string!(input),
+            validator: validator_default!(input)
         },
         CommandOption {
             name: "output",
             short_name: Some("o"),
             usage: "output path or 'stdout' for standard output",
             default: None,
-            parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
-                if args.len() == 0 { return Err("".to_string()); }
-                config.output = Some(args[0].clone());
-                Ok(args[1..].to_vec())
-            },
-            validator: | config: &Config | -> Result<i32, String>  {
-                if let Some(_) = config.output { Ok(0) }
-                else { Err("output not specified.".to_string()) }
-            }
+            parser: parser_string!(output),
+            validator: validator_default!(output)
+        },
+        CommandOption {
+            name: "frames",
+            short_name: Some("fr"),
+            usage: "number of maximum frames to encode",
+            default: Some("4294967295"),
+            parser: parser_num!(u32, frames),
+            validator: validator_default!(frames)
         },
         CommandOption {
             name: "size",

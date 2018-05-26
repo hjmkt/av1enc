@@ -1,5 +1,9 @@
+#![allow(dead_code)]
+#![allow(non_camel_case_types)]
+
 use sequence_header::SequenceHeader;
 use frame_header::FrameHeader;
+use frame::Frame;
 
 struct SpatialLayer {
     max_width: u16,
@@ -51,7 +55,7 @@ enum MetaData {
     },
 }
 
-enum OBU {
+enum OBU<'a> {
     OBU_SEQUENCE_HEADER(SequenceHeader),
     OBU_TEMPORAL_DELIMITER,
     OBU_FRAME_HEADER(FrameHeader),
@@ -59,7 +63,7 @@ enum OBU {
     OBU_TILE_GROUP,
     OBU_METADATA(MetaData),
     OBU_FRAME {
-        frame_header: FrameHeader
+        frame: Frame<'a>
     },
     OBU_PADDING(u32),
 }

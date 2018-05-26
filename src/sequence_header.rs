@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use constants::{ColorPrimaries, TransferCharacteristics, MatrixCoefficients};
 
 struct OperatingPoint {

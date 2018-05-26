@@ -1,3 +1,6 @@
+#![allow(non_camel_case_types)]
+#![allow(dead_code)]
+
 pub enum ColorPrimaries {
     CP_BT_709 = 1,
     CP_UNSPECIFIED = 2,
