@@ -21,6 +21,7 @@ mod obu;
 mod frame_header;
 mod util;
 mod frame;
+mod bool_coder;
 
 
 fn main() {
