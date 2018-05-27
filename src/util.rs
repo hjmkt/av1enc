@@ -1,4 +1,5 @@
 #![allow(unused_macros)]
+#![allow(dead_code)]
 
 macro_rules! Abs {
     ($x: expr) => ( if x>=0 { $x } else { -$x } );
@@ -64,4 +65,45 @@ pub fn msb16(n: u16) -> u8{
     if m1>0 { bit += 4; }
     else { m1 = m0; }
     bit + LUT[m1 as usize]
+}
+
+pub fn msb32(n: u32) -> u8{
+    static LUT: [u8; 32] = [
+        0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+    ];
+    let mut bit = 0;
+    let mut m0 = n >> 16;
+    if m0>0 { bit += 16; }
+    else { m0 = n; }
+    let mut m1 = m0 >> 8;
+    if m1>0 { bit += 8; }
+    else { m1 = m0; }
+    let mut m2 = m1 >> 4;
+    if m2>0 { bit += 4; }
+    else { m2 = m1; }
+    bit + LUT[m2 as usize]
+}
+
+pub fn msb64(n: u64) -> u8{
+    static LUT: [u8; 64] = [
+        0, 0, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3,
+        4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4,
+        5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+        5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5,
+    ];
+    let mut bit = 0;
+    let mut m0 = n >> 32;
+    if m0>0 { bit += 32; }
+    else { m0 = n; }
+    let mut m1 = m0 >> 16;
+    if m1>0 { bit += 16; }
+    else { m1 = m0; }
+    let mut m2 = m1 >> 8;
+    if m2>0 { bit += 8; }
+    else { m2 = m1; }
+    let mut m3 = m2 >> 4;
+    if m3>0 { bit += 4; }
+    else { m3 = m2; }
+    bit + LUT[m3 as usize]
 }

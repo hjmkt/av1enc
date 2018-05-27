@@ -2,7 +2,7 @@
 #![allow(non_snake_case)]
 
 use std::collections::VecDeque;
-use util::{msb16};
+use util::{msb16, msb64};
 
 pub struct BoolCoder{
     bool_value: i32,
@@ -207,6 +207,33 @@ impl BoolCoder {
         let mut in_bits: Vec<u8> = vec![];
         for i in (0..bits).rev() { in_bits.push(((literal>>i)&1) as u8); }
         self.encode_symbols(&in_bits, out_bits, 128);
+    }
+
+    pub fn encode_uvlc(&mut self, out_bits: &mut Vec<u8>, val: u32) {
+        let v: u64 = (val + 1) as u64;
+        let n = msb64(v);
+        for _ in 0..n { out_bits.push(0) }
+        out_bits.push(1);
+        for i in (0..n).rev() { out_bits.push(((v>>i)&1) as u8); }
+    }
+
+    pub fn decode_uvlc(&mut self, in_bits: &mut VecDeque<u8>) -> u32 {
+        let mut lz = 0;
+        loop {
+            if let Some(bit) = in_bits.pop_front() {
+                let done: bool = bit>0;
+                if done { break; }
+                else { lz += 1; }
+            }
+        }
+        println!("lz={}", lz);
+        if lz>=32 { return ((1u64<<32) - 1) as u32; }
+        let mut v: u64 = 0;
+        for _ in 0..lz {
+            if let Some(bit) = in_bits.pop_front() { v = (v<<1) + bit as u64; }
+            else { assert!(false); }
+        }
+        (v + (1<<lz) - 1) as u32
     }
 
     pub fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
