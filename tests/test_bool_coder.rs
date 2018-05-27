@@ -83,3 +83,24 @@ fn uvlc_enc_dec_equal() {
 
     for n in test_cases { t(n); }
 }
+
+#[test]
+fn le_enc_dec_equal() {
+    const TEST_LENGTH: usize = 8;
+    let mut coder = BoolCoder::new();
+
+    for n in 1..9 {
+        for _ in 0..TEST_LENGTH {
+            let mut original: u64 = 0;
+            for _ in 0..n {
+                original = (original<<1) + rand::random::<u8>() as u64;
+            }
+            let mut coded: Vec<u8> = vec![];
+            coder.encode_le(&mut coded, original, n);
+            let mut q = vec_to_queue(&coded);
+            let decoded: u64 = coder.decode_le(&mut q, n);
+            println!("{}, {}", original, decoded);
+            assert_eq!(original, decoded);
+        }
+    }
+}

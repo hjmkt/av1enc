@@ -236,6 +236,28 @@ impl BoolCoder {
         (v + (1<<lz) - 1) as u32
     }
 
+    pub fn encode_le(&mut self, out_bits: &mut Vec<u8>, val: u64, n: u8) {
+        for i in 0..n {
+            let byte: u8 = ((val>>(i*8)) & 0xff) as u8;
+            for j in (0..8).rev() {
+                out_bits.push(((byte>>j) & 1) as u8);
+            }
+        }
+    }
+
+    pub fn decode_le(&mut self, in_bits: &mut VecDeque<u8>, n: u8) -> u64 {
+        let mut t: u64 = 0;
+        for i in 0..n {
+            let mut byte: u8 = 0;
+            for _ in 0..8 {
+                if let Some(bit) = in_bits.pop_front() { byte = (byte<<1) + bit; }
+                else { assert!(false); }
+            }
+            t += (byte as u64) << (i*8);
+        }
+        t
+    }
+
     pub fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
         let w = msb16(n as u16);
         let m = (1<<w) - n;
