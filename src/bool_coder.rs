@@ -7,7 +7,7 @@ use util::{msb16};
 pub struct BoolCoder{
     bool_value: i32,
     bool_range: i32,
-    bool_max_bits: u32,
+    bool_max_bits: i32,
     bool_value_last_zero: bool,
     bool_value_zero_count: i32,
     bool_first: bool,
@@ -18,7 +18,7 @@ pub struct BoolCoder{
 
 impl BoolCoder {
 
-    fn new() -> BoolCoder {
+    pub fn new() -> BoolCoder {
         BoolCoder {
             bool_value: 0,
             bool_range: 0,
@@ -35,7 +35,7 @@ impl BoolCoder {
     }
 
     fn push_bits_with_size(out_bits: &mut Vec<u8>, bits: u32, size: u8) {
-        for i in (0..(size-1)).rev() { out_bits.push(((bits>>i)&1) as u8); }
+        for i in (0..size).rev() { out_bits.push(((bits>>i)&1) as u8); }
     }
 
     fn push_bits(out_bits: &mut Vec<u8>, bits: &Vec<u8>) {
@@ -44,25 +44,21 @@ impl BoolCoder {
 
     fn push_bits_align(out_bits: &mut Vec<u8>) {
         let size = (8-out_bits.len()%8)%8;
-        for i in 0..(size-1) { out_bits.push(0); }
+        for _ in 0..size { out_bits.push(0); }
     }
 
-    fn init_decoder(&mut self, in_bits: &mut VecDeque<u8>, sz: u32) {
+    pub fn init_decoder(&mut self, in_bits: &mut VecDeque<u8>, sz: u32) {
         let mut buf: i32 = 0;
-        for i in 0..14 {
-            if let Some(bit) = in_bits.pop_front() {
-                buf = (buf << 1) + bit as i32;
-            }
-            else {
-                assert!(false);
-            }
+        for _ in 0..15 {
+            if let Some(bit) = in_bits.pop_front() { buf = (buf << 1) + bit as i32; }
+            else { assert!(false); }
         }
         self.bool_value = (((1i32 << 15) - 1) ^ buf) as i32;
         self.bool_range = 1<<15;
-        self.bool_max_bits = 8 * sz - 15;
+        self.bool_max_bits = 8 * sz as i32 - 15;
     }
 
-    fn decode_symbol(&mut self, in_bits: &mut VecDeque<u8>, cdf: &mut Vec<i32>) -> i32 {
+    pub fn decode_symbol(&mut self, in_bits: &mut VecDeque<u8>, cdf: &mut Vec<i32>) -> i32 {
         let N: i32 = (cdf.len() - 1) as i32;
         let mut cur: i32 = self.bool_range;
         let mut symbol: i32 = -1;
@@ -80,17 +76,15 @@ impl BoolCoder {
         let bits: u8 = 15 - msb16(self.bool_range as u16);
         self.bool_range <<= bits;
         let mut new_data: i32 = 0;
-        for i in 0..(bits-1) {
+        for _ in 0..(bits as i32) {
             if let Some(bit) = in_bits.pop_front() {
                 new_data = (new_data << 1) + bit as i32;
                 self.bool_max_bits -= 1;
             }
-            else {
-                assert!(false);
-            }
+            else { assert!(false); }
         }
         self.bool_value = new_data ^ (((self.bool_value + 1) << bits) - 1);
-        self.bool_max_bits -= bits as u32;
+        self.bool_max_bits -= bits as i32;
 
         // update cdf
         let rate: i32 = 4 + (cdf[N as usize] > 31) as i32 + msb16(N as u16) as i32;
@@ -98,7 +92,7 @@ impl BoolCoder {
         let tmp0: i32 = 1 << rate2;
         let mut tmp: i32 = tmp0;
         let diff: i32 = (((1 << 15) - (N << rate2)) >> rate) << rate;
-        for i in 0..(N-2) {
+        for i in 0..(N-1) {
             tmp += if (i as i32)==symbol { diff } else { 0 };
             cdf[i as usize] -= (cdf[i as usize] - tmp) >> rate;
             tmp += tmp0;
@@ -113,29 +107,23 @@ impl BoolCoder {
         self.decode_symbol(in_bits, &mut cdf)
     }
 
-    fn decode_symbols(&mut self, in_bits: &mut VecDeque<u8>, out_bits: &mut Vec<u8>, n: i32, p: i32) {
+    pub fn decode_symbols(&mut self, in_bits: &mut VecDeque<u8>, out_bits: &mut Vec<u8>, n: i32, p: i32) {
         let mut cdf: Vec<i32> = vec![ ((p << 15) + 256 - p) >> 8, 1<<15, 0 ];
-        for i in 0..(n-1) {
-            out_bits.push(self.decode_symbol(in_bits, &mut cdf) as u8);
-        }
+        for _ in 0..n { out_bits.push(self.decode_symbol(in_bits, &mut cdf) as u8); }
     }
 
-    fn decode_literal(&mut self, in_bits: &mut VecDeque<u8>, out_bits: &mut Vec<u8>, n: i32) -> i32 {
+    pub fn decode_literal(&mut self, in_bits: &mut VecDeque<u8>, n: i32) -> i32 {
         let mut x: i32 = 0;
-        for i in 0..(n-1) {
-            x = (x<<1) + self.decode_symbolp(in_bits, 128);
-        }
+        for _ in 0..n { x = (x<<1) + self.decode_symbolp(in_bits, 128); }
         x
     }
 
-    fn exit_decoder(&mut self, in_bits: &mut VecDeque<u8>) {
-        for i in 0..(self.bool_max_bits-1) {
-            in_bits.pop_front();
-        }
+    pub fn exit_decoder(&mut self, in_bits: &mut VecDeque<u8>) {
+        for _ in 0..self.bool_max_bits { in_bits.pop_front(); }
         self.bool_max_bits = 0;
     }
 
-    fn init_encoder(&mut self) {
+    pub fn init_encoder(&mut self) {
         self.bool_value = 0;
         self.bool_range = 1<<15;
         self.bool_value_last_zero = false;
@@ -143,7 +131,7 @@ impl BoolCoder {
         self.bool_first = true;
     }
 
-    fn encode_symbol(&mut self, symbol: i32, out_bits: &mut Vec<u8>, cdf: &mut Vec<i32>) {
+    pub fn encode_symbol(&mut self, symbol: i32, out_bits: &mut Vec<u8>, cdf: &mut Vec<i32>) {
         let N: i32 = (cdf.len() - 1) as i32;
         let fl: i32 = if symbol>0 { (32768-cdf[(symbol-1) as usize]) } else { 0 };
         let fr: i32 = 32768-cdf[symbol as usize];
@@ -159,7 +147,7 @@ impl BoolCoder {
             if self.bool_value_zero_count>0 {
                 out_bits.push(1);
                 self.bit_count += 1;
-                for i in 0..(self.bool_value_zero_count-2) {
+                for _ in 0..(self.bool_value_zero_count-1) {
                     out_bits.push(0);
                     self.bit_count += 1;
                 }
@@ -180,7 +168,7 @@ impl BoolCoder {
                         out_bits.push(0);
                         self.bit_count += 1;
                     }
-                    for i in 0..(self.bool_value_zero_count-1) {
+                    for _ in 0..self.bool_value_zero_count {
                         out_bits.push(1);
                         self.bit_count += 1;
                     }
@@ -202,7 +190,7 @@ impl BoolCoder {
         let tmp0: i32 = 1 << rate2;
         let mut tmp: i32 = tmp0;
         let diff: i32 = (((1 << 15) - (N << rate2)) >> rate) << rate;
-        for i in 0..(N-2) {
+        for i in 0..(N-1) {
             tmp += if i==symbol { diff } else { 0 };
             cdf[i as usize] -= (cdf[i as usize] - tmp) >> rate;
             tmp += tmp0;
@@ -210,27 +198,21 @@ impl BoolCoder {
         cdf[N as usize] += (cdf[N as usize]<32) as i32;
     }
 
-    fn encode_symbols(&mut self, in_bits: &Vec<u8>, out_bits: &mut Vec<u8>, p: i32) {
+    pub fn encode_symbols(&mut self, in_bits: &Vec<u8>, out_bits: &mut Vec<u8>, p: i32) {
         let mut cdf: Vec<i32> = vec![ ((p << 15) + 256 - p) >> 8, 1<<15, 0 ];
-        for bit in in_bits {
-            self.encode_symbol(*bit as i32, out_bits, &mut cdf);
-        }
+        for bit in in_bits { self.encode_symbol(*bit as i32, out_bits, &mut cdf); }
     }
 
-    fn encode_literal(&mut self, out_bits: &mut Vec<u8>, literal: i32, bits: u32) {
+    pub fn encode_literal(&mut self, out_bits: &mut Vec<u8>, literal: i32, bits: u32) {
         let mut in_bits: Vec<u8> = vec![];
-        for i in (0..(bits-1)).rev() {
-            in_bits.push(((literal>>i)&1) as u8);
-        }
+        for i in (0..bits).rev() { in_bits.push(((literal>>i)&1) as u8); }
         self.encode_symbols(&in_bits, out_bits, 128);
     }
 
-    fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
+    pub fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
         let w = msb16(n as u16);
         let m = (1<<w) - n;
-        if val<m {
-            self.encode_literal(out_bits, val, (w-1) as u32);
-        }
+        if val<m { self.encode_literal(out_bits, val, (w-1) as u32); }
         else {
             let t = val + m;
             let l = t&1;
@@ -240,21 +222,21 @@ impl BoolCoder {
         }
     }
 
-    fn exit_encoder(&mut self, out_bits: &mut Vec<u8>) {
+    pub fn exit_encoder(&mut self, out_bits: &mut Vec<u8>) {
         if self.bool_value_last_zero {
             out_bits.push(0);
             self.bit_count += 1;
         }
-        for i in 0..(self.bool_value_zero_count-1) {
+        for _ in 0..self.bool_value_zero_count {
             out_bits.push(1);
             self.bit_count += 1;
         }
-        for i in 0..15 {
+        for i in 0..16 {
             out_bits.push(((self.bool_value >> (15 - i)) & 1) as u8);
         }
 
         let padding = (8 - self.bit_count % 8) % 8;
-        for i in 0..(padding-1) {
+        for _ in 0..(padding as i32) {
             out_bits.push(0);
         }
     }

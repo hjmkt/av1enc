@@ -26,7 +26,12 @@ mod bool_coder;
 
 fn main() {
 
-    println!("{} version {} Copyright (c) 2018-2018 {}", env!("CARGO_PKG_NAME").to_string(), env!("CARGO_PKG_VERSION").to_string(), env!("CARGO_PKG_AUTHORS"));
+    println!(
+        "{} version {} Copyright (c) 2018-2018 {}",
+        env!("CARGO_PKG_NAME").to_string(),
+        env!("CARGO_PKG_VERSION").to_string(),
+        env!("CARGO_PKG_AUTHORS").split(':').collect::<Vec<&str>>().join(", ").to_string()
+    );
 
     let mut config: Config = Config::default();
 

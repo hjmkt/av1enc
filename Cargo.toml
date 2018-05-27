@@ -1,9 +1,13 @@
 [package]
-name = "av1-enc"
+name = "av1enc"
 version = "0.0.1"
-authors = [ "hjmkt <hjmkt3126@gmail.com>" ]
+authors = [ "Hajime Kato <hjmkt3126@gmail.com>" ]
 
 [dependencies]
 num = "*"
 lazy_static = "*"
 colored = "*"
+<<<<<<< HEAD
+=======
+rand = "*"
+>>>>>>> f311ba1... Add test for bool coder / Fix bugs in bool coder
