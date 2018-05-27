@@ -99,7 +99,26 @@ fn le_enc_dec_equal() {
             coder.encode_le(&mut coded, original, n);
             let mut q = vec_to_queue(&coded);
             let decoded: u64 = coder.decode_le(&mut q, n);
-            println!("{}, {}", original, decoded);
+            assert_eq!(original, decoded);
+        }
+    }
+}
+
+#[test]
+fn leb128_enc_dec_equal() {
+    const TEST_LENGTH: usize = 8;
+    let mut coder = BoolCoder::new();
+
+    for n in 1..8 {
+        for _ in 0..TEST_LENGTH {
+            let mut original: u64 = 0;
+            for _ in 0..n {
+                original = (original<<1) + rand::random::<u8>() as u64;
+            }
+            let mut coded: Vec<u8> = vec![];
+            coder.encode_leb128(&mut coded, original);
+            let mut q = vec_to_queue(&coded);
+            let decoded: u64 = coder.decode_leb128(&mut q);
             assert_eq!(original, decoded);
         }
     }

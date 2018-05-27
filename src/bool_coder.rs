@@ -12,6 +12,7 @@ pub struct BoolCoder{
     bool_value_zero_count: i32,
     bool_first: bool,
     bit_count: u64,
+    leb_128_bytes: u64,
 //    CDF tile_cdf;
 //    std::array<CDF, 8> cdfs;
 }
@@ -27,6 +28,7 @@ impl BoolCoder {
             bool_value_zero_count: 0,
             bool_first: true,
             bit_count: 0,
+            leb_128_bytes: 0,
         }
     }
 
@@ -226,7 +228,6 @@ impl BoolCoder {
                 else { lz += 1; }
             }
         }
-        println!("lz={}", lz);
         if lz>=32 { return ((1u64<<32) - 1) as u32; }
         let mut v: u64 = 0;
         for _ in 0..lz {
@@ -256,6 +257,34 @@ impl BoolCoder {
             t += (byte as u64) << (i*8);
         }
         t
+    }
+
+    pub fn encode_leb128(&mut self, out_bits: &mut Vec<u8>, val: u64) {
+        assert!(val<(1<<56));
+        let mut v = val;
+        while {
+            out_bits.push((v>127) as u8);
+            for i in (0..7).rev() {
+                out_bits.push(((v>>i)&1) as u8);
+            }
+            v >>= 7;
+            v>0
+        } {}
+    }
+
+    pub fn decode_leb128(&mut self, in_bits: &mut VecDeque<u8>) -> u64 {
+        let mut v: u64 = 0;
+        for i in 0..8 {
+            let mut leb: u64 = 0;
+            for _ in 0..8 {
+                if let Some(bit) = in_bits.pop_front() { leb = (leb<<1) + bit as u64; }
+                else { assert!(false); }
+            }
+            v |= (leb & 0x7f) << (i*7);
+            self.leb_128_bytes += 1;
+            if leb & 0x80 == 0 { break; }
+        }
+        v
     }
 
     pub fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
