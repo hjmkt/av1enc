@@ -1,5 +1,6 @@
 #![allow(unused_macros)]
 #![allow(dead_code)]
+#![macro_use]
 
 macro_rules! Abs {
     ($x: expr) => ( if x>=0 { $x } else { -$x } );
@@ -29,15 +30,19 @@ macro_rules! Round2Signed {
     ($x: expr, $n: expr) => ( if $x>=0 { Round2!($x, $n) } else { Round2!(-$x, $n) } );
 }
 
+#[macro_export]
 macro_rules! FloorLog2 {
-    ($x: expr) => (
-        let mut s = 0;
-        while $x != 0 {
-            $x = ($x >> 1);
-            s++;
+    ($x: expr) => {
+        {
+            let mut s = 0;
+            let mut t = $x;
+            while t != 0 {
+                t >>= 1;
+                s += 1;
+            }
+            s - 1
         }
-        s - 1
-    );
+    };
 }
 
 macro_rules! CeilLog2 {

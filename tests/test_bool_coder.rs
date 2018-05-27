@@ -140,3 +140,19 @@ fn su_enc_dec_equal() {
         }
     }
 }
+
+#[test]
+fn ns_enc_dec_equal() {
+    const TEST_LENGTH: usize = 1024;
+    let mut coder = BoolCoder::new();
+
+    for _ in 0..TEST_LENGTH {
+        let mut original: u64 = rand::random::<u32>() as u64;
+        let mut n: u64 = original + rand::random::<u32>() as u64;
+        let mut coded: Vec<u8> = vec![];
+        coder.encode_ns(&mut coded, original, n);
+        let mut q = vec_to_queue(&coded);
+        let decoded: u64 = coder.decode_ns(&mut q, n);
+        assert_eq!(original, decoded);
+    }
+}
