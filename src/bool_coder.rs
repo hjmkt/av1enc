@@ -287,6 +287,30 @@ impl BoolCoder {
         v
     }
 
+    pub fn encode_su(&mut self, out_bits: &mut Vec<u8>, val: i64, n: u8) {
+        let signed: bool = val < 0;
+        out_bits.push(signed as u8);
+        if signed {
+            let v: u64 = (val + 2*(1<<(n-1))) as u64;
+            for i in (0..(n-1)).rev() { out_bits.push(((v>>i)&1) as u8); }
+        }
+        else {
+            let v: u64 = val.abs() as u64;
+            for i in (0..(n-1)).rev() { out_bits.push(((v>>i)&1) as u8); }
+        }
+    }
+
+    pub fn decode_su(&mut self, in_bits: &mut VecDeque<u8>, n: u8) -> i64 {
+        let mut v: u64 = 0;
+        for _ in 0..n {
+            if let Some(bit) = in_bits.pop_front() { v = (v<<1) + bit as u64; }
+            else { assert!(false); }
+        }
+        let sign_mask: u64 = 1 << (n-1);
+        let ret = if v&sign_mask > 0 { v as i64 - 2*(sign_mask as i64) } else { v as i64 };
+        ret
+    }
+
     pub fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
         let w = msb16(n as u16);
         let m = (1<<w) - n;

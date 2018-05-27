@@ -123,3 +123,20 @@ fn leb128_enc_dec_equal() {
         }
     }
 }
+
+#[test]
+fn su_enc_dec_equal() {
+    const TEST_LENGTH: usize = 8;
+    let mut coder = BoolCoder::new();
+
+    for n in 1..32 {
+        for _ in 0..TEST_LENGTH {
+            let mut original: i64 = (rand::random::<u32>() % (1u64<<(n+1)-1) as u32) as i64 + (-1i64 << (n-1));
+            let mut coded: Vec<u8> = vec![];
+            coder.encode_su(&mut coded, original, n);
+            let mut q = vec_to_queue(&coded);
+            let decoded: i64 = coder.decode_su(&mut q, n);
+            assert_eq!(original, decoded);
+        }
+    }
+}
