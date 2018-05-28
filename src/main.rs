@@ -80,5 +80,7 @@ fn main() {
         }
     };
 
-    
+    for fr in 0..config.frames.unwrap() {
+
+    }
 }

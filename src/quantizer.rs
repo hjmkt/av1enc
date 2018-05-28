@@ -1,3 +1,6 @@
+#![allow(non_upper_case_globals)]
+#![allow(dead_code)]
+
 use constants::*;
 
 const qm_offset: [usize; TX_SIZES_ALL] = [
