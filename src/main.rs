@@ -17,6 +17,7 @@ use std::io::{self, Read, Write};
 
 mod constants;
 mod cdf;
+mod quantizer;
 mod sequence_header;
 mod obu;
 mod frame_header;
