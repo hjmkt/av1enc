@@ -63,11 +63,11 @@ pub enum FrameType {
     SWITCH_FRAME = 3,
 }
 
-pub enum LRType {
+pub enum FrameRestorationType {
     RESTORE_NONE = 0,
-    RESTORE_SWITCHABLE = 1,
-    RESTORE_WIENER = 2,
-    RESTORE_SGRPROJ = 3,
+    RESTORE_WIENER = 1,
+    RESTORE_SGRPROJ = 2,
+    RESTORE_SWITCHABLE = 3,
 }
 
 pub const REFS_PER_FRAME: usize = 7;

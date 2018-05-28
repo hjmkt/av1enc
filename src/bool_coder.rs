@@ -207,7 +207,7 @@ impl BoolCoder {
     // TODO skip cdf update
     pub fn encode_literal(&mut self, out_bits: &mut Vec<u8>, literal: u64, n: u8) {
         for i in (0..n).rev() {
-            self.encode_symbolp((((literal>>i)&1) as u8), out_bits, 128);
+            self.encode_symbolp(((literal>>i)&1) as u8, out_bits, 128);
         }
     }
 
