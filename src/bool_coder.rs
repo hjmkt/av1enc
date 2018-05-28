@@ -60,7 +60,7 @@ impl BoolCoder {
         self.bool_max_bits = 8 * sz as i32 - 15;
     }
 
-    pub fn decode_symbol(&mut self, in_bits: &mut VecDeque<u8>, cdf: &mut Vec<i32>) -> i32 {
+    pub fn decode_symbol(&mut self, in_bits: &mut VecDeque<u8>, cdf: &mut Vec<i32>) -> u64 {
         let N: i32 = (cdf.len() - 1) as i32;
         let mut cur: i32 = self.bool_range;
         let mut symbol: i32 = -1;
@@ -101,10 +101,10 @@ impl BoolCoder {
         }
         cdf[N as usize] += (cdf[N as usize]<32) as i32;
 
-        symbol
+        symbol as u64
     }
 
-    fn decode_symbolp(&mut self, in_bits: &mut VecDeque<u8>, p: i32) -> i32 {
+    fn decode_symbolp(&mut self, in_bits: &mut VecDeque<u8>, p: i32) -> u64 {
         let mut cdf: Vec<i32> = vec![ ((p << 15) + 256 - p) >> 8, 1<<15, 0 ];
         self.decode_symbol(in_bits, &mut cdf)
     }
@@ -112,12 +112,6 @@ impl BoolCoder {
     pub fn decode_symbols(&mut self, in_bits: &mut VecDeque<u8>, out_bits: &mut Vec<u8>, n: i32, p: i32) {
         let mut cdf: Vec<i32> = vec![ ((p << 15) + 256 - p) >> 8, 1<<15, 0 ];
         for _ in 0..n { out_bits.push(self.decode_symbol(in_bits, &mut cdf) as u8); }
-    }
-
-    pub fn decode_literal(&mut self, in_bits: &mut VecDeque<u8>, n: i32) -> i32 {
-        let mut x: i32 = 0;
-        for _ in 0..n { x = (x<<1) + self.decode_symbolp(in_bits, 128); }
-        x
     }
 
     pub fn exit_decoder(&mut self, in_bits: &mut VecDeque<u8>) {
@@ -205,10 +199,22 @@ impl BoolCoder {
         for bit in in_bits { self.encode_symbol(*bit as i32, out_bits, &mut cdf); }
     }
 
-    pub fn encode_literal(&mut self, out_bits: &mut Vec<u8>, literal: i32, bits: u32) {
-        let mut in_bits: Vec<u8> = vec![];
-        for i in (0..bits).rev() { in_bits.push(((literal>>i)&1) as u8); }
-        self.encode_symbols(&in_bits, out_bits, 128);
+    pub fn encode_symbolp(&mut self, bit: u8, out_bits: &mut Vec<u8>, p: i32) {
+        let mut cdf: Vec<i32> = vec![ ((p << 15) + 256 - p) >> 8, 1<<15, 0 ];
+        self.encode_symbol(bit as i32, out_bits, &mut cdf);
+    }
+
+    // TODO skip cdf update
+    pub fn encode_literal(&mut self, out_bits: &mut Vec<u8>, literal: u64, n: u8) {
+        for i in (0..n).rev() {
+            self.encode_symbolp((((literal>>i)&1) as u8), out_bits, 128);
+        }
+    }
+
+    pub fn decode_literal(&mut self, in_bits: &mut VecDeque<u8>, n: u8) -> u64 {
+        let mut x: u64 = 0;
+        for _ in 0..n { x = (x<<1) + self.decode_symbolp(in_bits, 128); }
+        x
     }
 
     pub fn encode_uvlc(&mut self, out_bits: &mut Vec<u8>, val: u32) {
@@ -340,19 +346,6 @@ impl BoolCoder {
         if let Some(extra_bit) = in_bits.pop_front() { return (v<<1) - m + extra_bit as u64; }
         else { assert!(false); }
         0
-    }
-
-    pub fn encode_uint(&mut self, out_bits: &mut Vec<u8>, val: i32, n: i32) {
-        let w = msb16(n as u16);
-        let m = (1<<w) - n;
-        if val<m { self.encode_literal(out_bits, val, (w-1) as u32); }
-        else {
-            let t = val + m;
-            let l = t&1;
-            let h = t>>1;
-            self.encode_literal(out_bits, h, (w-1) as u32);
-            self.encode_literal(out_bits, l, 1);
-        }
     }
 
     pub fn exit_encoder(&mut self, out_bits: &mut Vec<u8>) {

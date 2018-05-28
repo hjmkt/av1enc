@@ -11,7 +11,7 @@ fn vec_to_queue(v: &Vec<u8>) -> VecDeque<u8> {
 }
 
 #[test]
-fn enc_dec_equal() {
+fn symbol_enc_dec_equal() {
     const TEST_LENGTH: usize = 1024;
     const PROBABILITY: i32 = 32;
 
@@ -31,6 +31,29 @@ fn enc_dec_equal() {
     coder.exit_decoder(&mut q);
 
     assert!(original.iter().eq(decoded.iter()));
+}
+
+#[test]
+fn literal_enc_dec_equal() {
+    const TEST_LENGTH: usize = 8;
+
+    let mut coder = BoolCoder::new();
+    for n in 1..32 {
+        for _ in 0..TEST_LENGTH {
+            coder.init_encoder();
+            let mut original: u64 = rand::random::<u64>() & (1u64<<n-1);
+            let mut coded: Vec<u8> = vec![];
+            coder.encode_literal(&mut coded, original, n);
+            coder.exit_encoder(&mut coded);
+
+            let mut q = vec_to_queue(&mut coded);
+            coder.init_decoder(&mut q, (coded.len()/8) as u32);
+            let decoded: u64 = coder.decode_literal(&mut q, n);
+            coder.exit_decoder(&mut q);
+
+            assert_eq!(original, decoded);
+        }
+    }
 }
 
 #[test]
