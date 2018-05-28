@@ -2,8 +2,8 @@
 #![allow(unused_variables)]
 #![allow(unused_mut)]
 
-#[macro_use]
-extern crate lazy_static;
+#[macro_use] extern crate enum_primitive;
+#[macro_use] extern crate lazy_static;
 extern crate colored;
 mod option;
 use option::*;
@@ -24,6 +24,11 @@ mod frame_header;
 mod util;
 mod frame;
 mod bool_coder;
+mod common;
+mod block;
+
+use frame::*;
+use constants::*;
 
 
 fn main() {
@@ -81,6 +86,9 @@ fn main() {
     };
 
     for fr in 0..config.frames.unwrap() {
-
+        let mut frame = Frame::new(FrameType::KEY_FRAME, 176, 144);
+        if let Err(_) = reader.read_to_vec(&mut frame.original_y) { process::exit(0); }
+        if let Err(_) = reader.read_to_vec(&mut frame.original_u) { process::exit(0); }
+        if let Err(_) = reader.read_to_vec(&mut frame.original_v) { process::exit(0); }
     }
 }

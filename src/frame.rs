@@ -2,11 +2,14 @@
 
 use constants::*;
 use frame_header::*;
+//use block::*;
 
 pub struct Frame<'a> {
-    width: u16,
-    height: u16,
+    width: usize,
+    height: usize,
     frame_type: FrameType,
+    pub subsampling_x: bool,
+    pub subsampling_y: bool,
     showable_frame: bool,
     error_resilient_mode: bool,
     allow_screen_content_tools: bool,
@@ -15,7 +18,7 @@ pub struct Frame<'a> {
     order_hint: u8,
     use_superres: bool,
     allow_intrabc: bool,
-    ref_frames: [Option<&'a Frame<'a>>; NUM_REF_FRAMES as usize],
+    pub ref_frames: [Option<&'a Frame<'a>>; NUM_REF_FRAMES as usize],
     allow_high_precision_mv: bool,
     is_motion_mode_switchable: bool,
     use_ref_frame_mvs: bool,
@@ -35,17 +38,21 @@ pub struct Frame<'a> {
     global_motion_params: GlobalMotionParams,
     film_frain_params: FilmGrainParams,
 
-    original_y: Vec<i16>,
-    original_u: Vec<i16>,
-    original_v: Vec<i16>,
+    pub original_y: Vec<i16>,
+    pub original_u: Vec<i16>,
+    pub original_v: Vec<i16>,
+
+    pub mis: Vec<Vec<Option<ModeInfo>>>,
 }
 
 impl<'a> Frame<'a> {
-    pub fn new(frame_type: FrameType, width: u16, height: u16) -> Frame<'a> {
+    pub fn new(frame_type: FrameType, width: usize, height: usize) -> Frame<'a> {
         Frame {
             width: width,
             height: height,
             frame_type: frame_type,
+            subsampling_x: true,
+            subsampling_y: true,
             showable_frame: true,
             error_resilient_mode: false,
             allow_screen_content_tools: false,
@@ -152,6 +159,30 @@ impl<'a> Frame<'a> {
             original_y: vec![0; width as usize * height as usize],
             original_u: vec![0; width as usize * height as usize / 4],
             original_v: vec![0; width as usize * height as usize / 4],
+
+            mis: vec![vec![None; width as usize / 4]; height as usize / 4],
         }
+    }
+
+    pub fn get_mi(&mut self, mi_row: usize, mi_col: usize) -> Option<ModeInfo> {
+        self.mis[mi_row][mi_col]
+    }
+
+    pub fn get_above_mi(&mut self, mi_row: usize, mi_col: usize) -> Option<ModeInfo> {
+        if mi_row==0 { None }
+        else { self.mis[mi_row-1][mi_col] }
+    }
+
+    pub fn get_left_mi(&mut self, mi_row: usize, mi_col: usize) -> Option<ModeInfo> {
+        if mi_col==0 { None }
+        else { self.mis[mi_row][mi_col-1] }
+    }
+
+    pub fn mi_rows(&self) -> usize {
+        self.height / 4
+    }
+
+    pub fn mi_cols(&self) -> usize {
+        self.width / 4
     }
 }

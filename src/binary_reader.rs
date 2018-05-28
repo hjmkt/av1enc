@@ -23,6 +23,20 @@ impl<'a> BinaryReader<'a> {
             buffer: 0
         })
     }
+
+    pub fn read_to_vec<T: From<u8>>(&mut self, v: &mut Vec<T>) -> io::Result<usize> {
+        let len = v.len();
+        let mut tmp: Vec<u8> = vec![0; len];
+        match self.input.read(&mut tmp[..]) {
+            Ok(s) => {
+                for i in 0..len {
+                    v[i] = T::from(tmp[i]);
+                }
+                Ok(s)
+            },
+            Err(e) => Err(e)
+        }
+    }
 }
 
 impl<'a> Read for BinaryReader<'a> {

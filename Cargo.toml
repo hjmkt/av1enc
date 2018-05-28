@@ -7,7 +7,5 @@ authors = [ "Hajime Kato <hjmkt3126@gmail.com>" ]
 num = "*"
 lazy_static = "*"
 colored = "*"
-<<<<<<< HEAD
-=======
 rand = "*"
->>>>>>> f311ba1... Add test for bool coder / Fix bugs in bool coder
+enum_primitive = "*"

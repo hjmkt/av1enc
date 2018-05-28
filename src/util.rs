@@ -3,7 +3,7 @@
 #![macro_use]
 
 macro_rules! Abs {
-    ($x: expr) => ( if x>=0 { $x } else { -$x } );
+    ($x: expr) => ( if $x>=0 { $x } else { -$x } );
 }
 
 macro_rules! Clip3 {

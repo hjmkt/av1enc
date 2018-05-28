@@ -1,6 +1,13 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 #![allow(dead_code)]
+#![allow(unused_imports)]
+
+extern crate num;
+extern crate enum_primitive;
+use self::num::FromPrimitive;
+use self::enum_primitive::*;
+use self::TxType::*;
 
 pub enum ColorPrimaries {
     CP_BT_709 = 1, // BT.709
@@ -80,8 +87,11 @@ pub enum Partition {
     PARTITION_HORZ_B,
     PARTITION_VERT_A,
     PARTITION_VERT_B,
+    PARTITION_HORZ_4,
+    PARTITION_VERT_4,
 }
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum BlockSize {
     BLOCK_4X4,
     BLOCK_4X8,
@@ -108,7 +118,8 @@ pub enum BlockSize {
     BLOCK_INVALID,
 }
 
-enum YMode {
+#[derive(PartialEq, Copy, Clone)]
+pub enum YMode {
     DC_PRED,
     V_PRED,
     H_PRED,
@@ -137,26 +148,30 @@ enum YMode {
     NEW_NEWMV,
 }
 
-enum TxSize {
-    TX_4X4,
-    TX_8X8,
-    TX_16X16,
-    TX_32X32,
-    TX_64X64,
-    TX_4X8,
-    TX_8X4,
-    TX_8X16,
-    TX_16X8,
-    TX_16X32,
-    TX_32X16,
-    TX_32X64,
-    TX_64X32,
-    TX_4X16,
-    TX_16X4,
-    TX_8X32,
-    TX_32X8,
-    TX_16X64,
-    TX_64X16,
+enum_from_primitive! {
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
+pub enum TxSize {
+    TX_4X4 = 0,
+    TX_8X8 = 1,
+    TX_16X16 = 2,
+    TX_32X32 = 3,
+    TX_64X64 = 4,
+    TX_4X8 = 5,
+    TX_8X4 = 6,
+    TX_8X16 = 7,
+    TX_16X8 = 8,
+    TX_16X32 = 9,
+    TX_32X16 = 10,
+    TX_32X64 = 11,
+    TX_64X32 = 12,
+    TX_4X16 = 13,
+    TX_16X4 = 14,
+    TX_8X32 = 15,
+    TX_32X8 = 16,
+    TX_16X64 = 17,
+    TX_64X16 = 18,
+    TX_INVALID = 19,
+}
 }
 
 enum TxMode {
@@ -196,7 +211,8 @@ const cfl_alpha_signs: [(SignUV, SignUV); 8] = [
     (SignUV::CFL_SIGN_POS, SignUV::CFL_SIGN_POS),
 ];
 
-enum InterpolationFilter {
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
+pub enum InterpFilter {
     EIGHTTAP,
     EIGHTTAP_SMOOTH,
     EIGHTTAP_SHARP,
@@ -222,7 +238,8 @@ enum CompRefType {
     BIDIR_COMP_REFERENCE, // One from Group 1 and one from Group 2
 }
 
-enum RefFrame {
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
+pub enum RefFrame {
     NONE = -1, // ref[1]=NONE block uses single prediction
     INTRA_FRAME = 0, // ref[1]=INTRA_FRAME block uses interintra prediction
     LAST_FRAME = 1,
@@ -260,7 +277,7 @@ enum MaskType {
     UNIFORM_45_INV,
 }
 
-enum MvJoint {
+pub enum MvJoint {
     MV_JOINT_ZERO, // changes row = No, changes col = No
     MV_JOINT_HNZVZ, // changes row = No, changes col = Yes
     MV_JOINT_HZVNZ, // changes row = Yes, changes col = No
@@ -302,22 +319,6 @@ pub const PARTITION_CONTEXTS: usize = 4; // Number of contexts when decoding par
 pub const TX_SIZES: usize = 5; // Number of square transform sizes
 pub const TX_SIZES_ALL: usize = 19; // Number of transform sizes (including non-square sizes)
 pub const TX_MODES: usize = 3; // Number of values for tx_mode
-pub const DCT_DCT: usize = 0; // Inverse transform rows with DCT and columns with DCT
-pub const ADST_DCT: usize = 1; // Inverse transform rows with DCT and columns with ADST
-pub const DCT_ADST: usize = 2; // Inverse transform rows with ADST and columns with DCT
-pub const ADST_ADST: usize = 3; // 	Inverse transform rows with ADST and columns with ADST
-pub const FLIPADST_DCT: usize = 4; // Inverse transform rows with FLIPADST and columns with DCT
-pub const DCT_FLIPADST: usize = 5; // Inverse transform rows with DCT and columns with FLIPADST
-pub const FLIPADST_FLIPADST: usize = 6; // Inverse transform rows with FLIPADST and columns with FLIPADST
-pub const ADST_FLIPADST: usize = 7; // Inverse transform rows with ADST and columns with FLIPADST
-pub const FLIPADST_ADST: usize = 8; // Inverse transform rows with FLIPADST and columns with ADST
-pub const IDTX: usize = 9; // Inverse transform rows with identity and columns with identity
-pub const V_DCT: usize = 10; // Inverse transform rows with identity and columns with DCT
-pub const H_DCT: usize = 11; // Inverse transform rows with DCT and columns with identity
-pub const V_ADST: usize = 12; // Inverse transform rows with identity and columns with ADST
-pub const H_ADST: usize = 13; // Inverse transform rows with ADST and columns with identity
-pub const V_FLIPADST: usize = 14; // Inverse transform rows with identity and columns with FLIPADST
-pub const H_FLIPADST: usize = 15; // Inverse transform rows with FLIPADST and columns with identity
 pub const TX_TYPES: usize = 16; // Number of inverse transform types
 pub const MB_MODE_COUNT: usize = 17; // Number of values for YMode
 pub const INTRA_MODES: usize = 13; // Number of values for y_mode
@@ -456,7 +457,7 @@ pub const INTRA_FILTER_MODES: usize = 5; // Number of types of intra filtering
 pub const COEFF_CDF_Q_CTXS: usize = 4; // Number of selectable context types for the coeff( ) syntax structure
 pub const PRIMARY_REF_NONE: usize = 7; // Value of primary_ref_frame indicating that there is no primary reference frame
 
-const coeff_base_ctx_offset: [[[usize; 5]; 5]; TX_SIZES_ALL] = [
+pub const coeff_base_ctx_offset: [[[usize; 5]; 5]; TX_SIZES_ALL] = [
     [
         [ 0, 1, 6, 6, 0 ],
         [ 1, 6, 6, 21, 0 ],
@@ -592,7 +593,7 @@ const coeff_base_ctx_offset: [[[usize; 5]; 5]; TX_SIZES_ALL] = [
     ]
 ];
 
-const coeff_base_pos_ctx_offset: [usize; 3] = [
+pub const coeff_base_pos_ctx_offset: [usize; 3] = [
     SIG_COEF_CONTEXTS_2D,
     SIG_COEF_CONTEXTS_2D + 5,
     SIG_COEF_CONTEXTS_2D + 10
@@ -1016,7 +1017,7 @@ const tx_mode_to_biggest_tx_size: [TxSize; TX_MODES] = [
     TxSize::TX_64X64
 ];
 
-const subsampled_size: [[[BlockSize; 2]; 2]; BLOCK_SIZES] = [
+pub const subsampled_size: [[[BlockSize; 2]; 2]; BLOCK_SIZES] = [
     [ [ BlockSize::BLOCK_4X4,    BlockSize::BLOCK_4X4],      [BlockSize::BLOCK_4X4,     BlockSize::BLOCK_4X4] ],
     [ [ BlockSize::BLOCK_4X8,    BlockSize::BLOCK_4X4],      [BlockSize::BLOCK_INVALID, BlockSize::BLOCK_4X4] ],
     [ [ BlockSize::BLOCK_8X4,    BlockSize::BLOCK_INVALID],  [BlockSize::BLOCK_4X4,     BlockSize::BLOCK_4X4] ],
@@ -1041,7 +1042,7 @@ const subsampled_size: [[[BlockSize; 2]; 2]; BLOCK_SIZES] = [
     [ [BlockSize::BLOCK_64X16,   BlockSize::BLOCK_INVALID],  [BlockSize::BLOCK_32X16,   BlockSize::BLOCK_32X8] ],
 ];
 
-const tx_type_in_set_intra: [[bool; TX_TYPES]; TX_SET_TYPES_INTRA] = [
+pub const tx_type_in_set_intra: [[bool; TX_TYPES]; TX_SET_TYPES_INTRA] = [
     [
         true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
     ],
@@ -1053,7 +1054,7 @@ const tx_type_in_set_intra: [[bool; TX_TYPES]; TX_SET_TYPES_INTRA] = [
     ]
 ];
 
-const tx_type_in_set_inter: [[bool; TX_TYPES]; TX_SET_TYPES_INTER] = [
+pub const tx_type_in_set_inter: [[bool; TX_TYPES]; TX_SET_TYPES_INTER] = [
     [
         true, false, false, false, false, false, false, false, false, false, false, false, false, false, false, false,
     ],
@@ -1068,33 +1069,238 @@ const tx_type_in_set_inter: [[bool; TX_TYPES]; TX_SET_TYPES_INTER] = [
     ]
 ];
 
-const tx_type_intra_inv_set1: [usize; 7] = [
+pub const tx_type_intra_inv_set1: [TxType; 7] = [
     IDTX, DCT_DCT, V_DCT, H_DCT, ADST_ADST, ADST_DCT, DCT_ADST
 ];
 
-const tx_type_intra_inv_set2: [usize; 5] = [
+pub const tx_type_intra_inv_set2: [TxType; 5] = [
     IDTX, DCT_DCT, ADST_ADST, ADST_DCT, DCT_ADST
 ];
 
-const tx_type_inter_inv_set1: [usize; 16] = [
+pub const tx_type_inter_inv_set1: [TxType; 16] = [
     IDTX, V_DCT, H_DCT, V_ADST, H_ADST, V_FLIPADST, H_FLIPADST,
     DCT_DCT, ADST_DCT, DCT_ADST, FLIPADST_DCT, DCT_FLIPADST, ADST_ADST,
     FLIPADST_FLIPADST, ADST_FLIPADST, FLIPADST_ADST
 ];
 
-const tx_type_inter_inv_set12: [usize; 12] = [
+pub const tx_type_inter_inv_set12: [TxType; 12] = [
     IDTX, V_DCT, H_DCT, DCT_DCT, ADST_DCT, DCT_ADST, FLIPADST_DCT,
     DCT_FLIPADST, ADST_ADST, FLIPADST_FLIPADST, ADST_FLIPADST,
     FLIPADST_ADST
 ];
 
-const tx_type_inter_inv_set3: [usize; 2] = [
+pub const tx_type_inter_inv_set3: [TxType; 2] = [
     IDTX, DCT_DCT
 ];
 
-const wiener_taps_min: [isize; 3] = [ -5, -23, -17 ];
-const wiener_taps_max: [isize; 3] = [ 10, 8, 46 ];
-const wiener_taps_k: [isize; 3] = [ 1, 2, 3 ];
+pub const wiener_taps_min: [isize; 3] = [ -5, -23, -17 ];
+pub const wiener_taps_max: [isize; 3] = [ 10, 8, 46 ];
+pub const wiener_taps_k: [isize; 3] = [ 1, 2, 3 ];
 
-const sgrproj_taps_min: [isize; 2] = [ -96, -32 ];
-const sgrproj_taps_max: [isize; 2] = [ 31, 95 ];
+pub const sgrproj_taps_min: [isize; 2] = [ -96, -32 ];
+pub const sgrproj_taps_max: [isize; 2] = [ 31, 95 ];
+
+pub const intra_mode_context: [usize; INTRA_MODES] = [
+    0, 1, 2, 3, 4, 4, 4, 4, 3, 0, 1, 2, 0
+];
+
+pub const size_group: [usize; BLOCK_SIZES] = [
+    0, 0, 0, 1, 1, 1, 2, 2, 2, 3, 3, 3,
+    3, 3, 3, 3, 0, 0, 1, 1, 2, 2,
+];
+
+pub const block_width: [usize; BLOCK_SIZES] = [
+    4, 4, 8, 8, 8, 16, 16, 16, 32, 32, 32, 64, 64, 64, 128, 128, 4, 16, 8, 32, 16, 64
+];
+
+pub const block_height: [usize; BLOCK_SIZES] = [
+    4, 8, 4, 8, 16, 8, 16, 32, 16, 32, 64, 32, 64, 128, 64, 128, 16, 4, 32, 8, 64, 16
+];
+
+pub const mi_width_log2: [usize; BLOCK_SIZES] = [
+    2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 5, 6, 6, 6, 7, 7, 2, 4, 3, 5, 4, 6
+];
+
+pub const mi_height_log2: [usize; BLOCK_SIZES] = [
+    2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7, 6, 7, 4, 2, 5, 3, 6, 4
+];
+
+pub const tx_width: [usize; TX_SIZES_ALL] = [
+    4, 8, 16, 32, 64, 4, 8, 8, 16, 16, 32, 32, 64, 4, 16, 8, 32, 16, 64
+];
+
+pub const tx_width_log2: [usize; TX_SIZES_ALL] = [
+    2, 3, 4, 5, 6, 2, 3, 3, 4, 4, 5, 5, 6, 2, 4, 3, 5, 4, 6
+];
+
+pub const tx_height: [usize; TX_SIZES_ALL] = [
+    4, 8, 16, 32, 64, 8, 4, 16, 8, 32, 16, 64, 32, 16, 4, 32, 8, 64, 16
+];
+
+pub const tx_height_log2: [usize; TX_SIZES_ALL] = [
+    2, 3, 4, 5, 6, 3, 2, 4, 3, 5, 4, 6, 5, 4, 2, 5, 3, 6, 4
+];
+
+#[derive(PartialEq, Copy, Clone)]
+pub struct ModeInfo {
+    pub mi_size: BlockSize,
+    pub tx_size: TxSize,
+    pub tx_type: TxType,
+    pub is_inter: bool,
+    pub skip: bool,
+    pub intra: bool,
+    pub single: bool,
+    pub seg_id_predicted: usize,
+    pub skip_mode: usize,
+    pub ref_frame: [RefFrame; 2],
+    pub interp_filter: [InterpFilter; 2],
+    pub level_context: [usize; 3],
+    pub dc_context: [usize; 3],
+    pub palette_size: [usize; 3],
+    pub comp_group_idx: usize,
+    pub compound_idx: usize,
+}
+
+use self::TxSize::*;
+pub const tx_size_sqr: [TxSize; TX_SIZES_ALL+1] = [
+    TX_4X4,
+    TX_8X8,
+    TX_16X16,
+    TX_32X32,
+    TX_64X64,
+    TX_4X4,
+    TX_4X4,
+    TX_8X8,
+    TX_8X8,
+    TX_16X16,
+    TX_16X16,
+    TX_32X32,
+    TX_32X32,
+    TX_4X4,
+    TX_4X4,
+    TX_8X8,
+    TX_8X8,
+    TX_16X16,
+    TX_16X16,
+    TX_INVALID,
+];
+
+pub const tx_size_sqr_up: [TxSize; TX_SIZES_ALL+1] = [
+    TX_4X4,
+    TX_8X8,
+    TX_16X16,
+    TX_32X32,
+    TX_64X64,
+    TX_8X8,
+    TX_8X8,
+    TX_16X16,
+    TX_16X16,
+    TX_32X32,
+    TX_32X32,
+    TX_64X64,
+    TX_64X64,
+    TX_16X16,
+    TX_16X16,
+    TX_32X32,
+    TX_32X32,
+    TX_64X64,
+    TX_64X64,
+    TX_INVALID,
+];
+
+pub const TX_SET_DCTONLY: usize = 0;
+pub const TX_SET_INTRA_1: usize = 1;
+pub const TX_SET_INTRA_2: usize = 2;
+pub const TX_SET_INTER_1: usize = 0;
+pub const TX_SET_INTER_2: usize = 1;
+pub const TX_SET_INTER_3: usize = 2;
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum TxType {
+    DCT_DCT = 0, // Inverse transform rows with DCT and columns with DCT
+    ADST_DCT = 1, // Inverse transform rows with DCT and columns with ADST
+    DCT_ADST = 2, // Inverse transform rows with ADST and columns with DCT
+    ADST_ADST = 3, // 	Inverse transform rows with ADST and columns with ADST
+    FLIPADST_DCT = 4, // Inverse transform rows with FLIPADST and columns with DCT
+    DCT_FLIPADST = 5, // Inverse transform rows with DCT and columns with FLIPADST
+    FLIPADST_FLIPADST = 6, // Inverse transform rows with FLIPADST and columns with FLIPADST
+    ADST_FLIPADST = 7, // Inverse transform rows with ADST and columns with FLIPADST
+    FLIPADST_ADST = 8, // Inverse transform rows with FLIPADST and columns with ADST
+    IDTX = 9, // Inverse transform rows with identity and columns with identity
+    V_DCT = 10, // Inverse transform rows with identity and columns with DCT
+    H_DCT = 11, // Inverse transform rows with DCT and columns with identity
+    V_ADST = 12, // Inverse transform rows with identity and columns with ADST
+    H_ADST = 13, // Inverse transform rows with ADST and columns with identity
+    V_FLIPADST = 14, // Inverse transform rows with identity and columns with FLIPADST
+    H_FLIPADST = 15, // Inverse transform rows with FLIPADST and columns with identity
+}
+
+// FIXME not in spec
+pub const mode_to_txfm: [TxType; MB_MODE_COUNT] = [
+    DCT_DCT, // DC
+    ADST_DCT, // V
+    DCT_ADST, // H
+    DCT_DCT, // D45
+    ADST_ADST, // D135
+    ADST_DCT, // D117
+    DCT_ADST, // D153
+    DCT_ADST, // D207
+    ADST_DCT, // D63
+    ADST_ADST, // SMOOTH
+    ADST_DCT,  // SMOOTH_V
+    DCT_ADST,  // SMOOTH_H
+    ADST_ADST, // TM
+    DCT_DCT, // NEARESTMV
+    DCT_DCT, // NEARMV
+    DCT_DCT, // GLOBALMV
+    DCT_DCT // NEWMV
+];
+
+pub const adjusted_tx_size: [TxSize; TX_SIZES_ALL] = [
+    TX_4X4,
+    TX_8X8,
+    TX_16X16,
+    TX_32X32,
+    TX_32X32,
+    TX_4X8,
+    TX_8X4,
+    TX_8X16,
+    TX_16X8,
+    TX_16X32,
+    TX_32X16,
+    TX_32X32,
+    TX_32X32,
+    TX_4X16,
+    TX_16X4,
+    TX_8X32,
+    TX_32X8,
+    TX_16X32,
+    TX_32X16,
+];
+
+pub const sig_ref_diff_offset: [[[usize; 2]; SIG_REF_DIFF_OFFSET_NUM]; 3] = [
+    [
+        [0, 1], [1, 0], [1, 1], [0, 2], [2, 0]
+    ],
+    [
+        [0, 1], [1, 0], [0, 2], [0, 3], [0, 4]
+    ],
+    [
+        [0, 1], [1, 0], [2, 0], [3, 0], [4, 0]
+    ],
+];
+
+pub const mag_ref_offset_with_tx_class: [[[usize; 2]; 3]; 3] = [
+    [[0, 1], [1, 0], [1, 1]],
+    [[0, 1], [1, 0], [0, 2]],
+    [[0, 1], [1, 0], [2, 0]],
+];
+
+pub const palette_color_context: [isize; PALETTE_MAX_COLOR_CONTEXT_HASH+1] = [
+    -1, -1, 0, -1, -1, 4, 3, 2, 1
+];
+
+use self::YMode::*;
+pub const filter_intra_mode_to_intra_dir: [YMode; INTRA_FILTER_MODES] = [
+    DC_PRED, V_PRED, H_PRED, D157_PRED, DC_PRED
+];
