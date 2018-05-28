@@ -60,7 +60,7 @@ impl BoolCoder {
         self.bool_max_bits = 8 * sz as i32 - 15;
     }
 
-    pub fn decode_symbol(&mut self, in_bits: &mut VecDeque<u8>, cdf: &mut Vec<i32>) -> u64 {
+    pub fn decode_symbol(&mut self, in_bits: &mut VecDeque<u8>, cdf: &mut [i32]) -> u64 {
         let N: i32 = (cdf.len() - 1) as i32;
         let mut cur: i32 = self.bool_range;
         let mut symbol: i32 = -1;
@@ -127,7 +127,7 @@ impl BoolCoder {
         self.bool_first = true;
     }
 
-    pub fn encode_symbol(&mut self, symbol: i32, out_bits: &mut Vec<u8>, cdf: &mut Vec<i32>) {
+    pub fn encode_symbol(&mut self, symbol: i32, out_bits: &mut Vec<u8>, cdf: &mut [i32]) {
         let N: i32 = (cdf.len() - 1) as i32;
         let fl: i32 = if symbol>0 { (32768-cdf[(symbol-1) as usize]) } else { 0 };
         let fr: i32 = 32768-cdf[symbol as usize];

@@ -16,6 +16,7 @@ use binary_writer::BinaryWriter;
 use std::io::{self, Read, Write};
 
 mod constants;
+mod cdf;
 mod sequence_header;
 mod obu;
 mod frame_header;
