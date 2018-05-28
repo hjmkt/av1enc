@@ -18,6 +18,24 @@ struct TemporalGroup {
     ref_pic_diff: Vec<u8>,
 }
 
+enum ScalabilityModeIdc {
+    SCALABILITY_L1T2,
+    SCALABILITY_L1T3,
+    SCALABILITY_L2T1,
+    SCALABILITY_L2T2,
+    SCALABILITY_L2T3,
+    SCALABILITY_S2T1,
+    SCALABILITY_S2T2,
+    SCALABILITY_S2T3,
+    SCALABILITY_L2T1h,
+    SCALABILITY_L2T2h,
+    SCALABILITY_L2T3h,
+    SCALABILITY_S2T1h,
+    SCALABILITY_S2T2h,
+    SCALABILITY_S2T3h,
+    SCALABILITY_SS,
+}
+
 struct ScalabilityStructure {
     spatial_layers: Vec<SpatialLayer>,
     temporal_group: Vec<TemporalGroup>,
