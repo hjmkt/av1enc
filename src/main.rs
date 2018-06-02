@@ -24,11 +24,16 @@ mod frame_header;
 mod util;
 mod frame;
 mod bool_coder;
+mod obu_encoder;
 mod common;
 mod block;
 
 use frame::*;
 use constants::*;
+use bool_coder::*;
+use sequence_header::*;
+use obu_encoder::*;
+use obu::OBU::*;
 
 
 fn main() {
@@ -85,10 +90,25 @@ fn main() {
         }
     };
 
+    let mut coder = BoolCoder::new();
+
+    let mut obu_encoder = OBUEncoder::new(&mut writer, &mut coder);
+
     for fr in 0..config.frames.unwrap() {
         let mut frame = Frame::new(FrameType::KEY_FRAME, 176, 144);
         if let Err(_) = reader.read_to_vec(&mut frame.original_y) { process::exit(0); }
         if let Err(_) = reader.read_to_vec(&mut frame.original_u) { process::exit(0); }
         if let Err(_) = reader.read_to_vec(&mut frame.original_v) { process::exit(0); }
+
+        if fr==0 {
+            // encode sequence header
+            let mut sequence_header_obu = OBU_SEQUENCE_HEADER(SequenceHeader::new(
+                config.frame_width.unwrap(),
+                config.frame_height.unwrap()
+            ));
+            obu_encoder.encode_temporal_unit(&mut sequence_header_obu);
+        }
+
+        
     }
 }

@@ -9,6 +9,7 @@ use self::num::FromPrimitive;
 use self::enum_primitive::*;
 use self::TxType::*;
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum ColorPrimaries {
     CP_BT_709 = 1, // BT.709
     CP_UNSPECIFIED = 2, // Unspecified
@@ -24,6 +25,7 @@ pub enum ColorPrimaries {
     CP_EBU_3213 = 22, // EBU Tech. 3213-E
 }
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum TransferCharacteristics {
     TC_RESERVED_0 = 0, // For future use
     TC_BT_709 = 1, // BT.709
@@ -46,6 +48,7 @@ pub enum TransferCharacteristics {
     TC_HLG = 18, // BT.2100 HLG, ARIB STD-B67
 }
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum MatrixCoefficients {
     MC_IDENTITY = 0, // Identity matrix
     MC_BT_709 = 1, // BT.709
@@ -62,6 +65,14 @@ pub enum MatrixCoefficients {
     MC_CHROMAT_NCL = 12, // Chromaticity-derived non-constant luminance
     MC_CHROMAT_CL = 13, // Chromaticity-derived constant luminance
     MC_ICTCP = 14, // BT.2100 ICtCp
+}
+
+#[derive(PartialEq, Copy, Clone)]
+pub enum ChromaSamplePosition {
+    CSP_UNKNOWN = 0,
+    CSP_VERTICAL = 1,
+    CSP_COLOCATED = 2,
+    CSP_RESERVED = 3,
 }
 
 pub enum FrameType {

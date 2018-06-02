@@ -7,10 +7,10 @@ use std::process;
 pub struct Config {
     pub input: Option<String>,
     pub output: Option<String>,
-    pub frame_width: Option<u16>,
-    pub frame_height: Option<u16>,
-    pub framerate: Option<Ratio<u16>>,
-    pub frames: Option<u32>,
+    pub frame_width: Option<usize>,
+    pub frame_height: Option<usize>,
+    pub framerate: Option<Ratio<usize>>,
+    pub frames: Option<usize>,
 }
 
 impl Default for Config {
@@ -116,7 +116,7 @@ lazy_static! {
             short_name: Some("fr"),
             usage: "number of maximum frames to encode",
             default: Some("4294967295"),
-            parser: parser_num!(u32, frames),
+            parser: parser_num!(usize, frames),
             validator: validator_default!(frames)
         },
         CommandOption {
@@ -126,7 +126,7 @@ lazy_static! {
             default: None,
             parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
                 if args.len() == 0 { return Err("".to_string()); }
-                if let Err(e) = CommandOption::parse_tuple::<u16>(&args[0], 'x', 2, &mut [&mut config.frame_width, &mut config.frame_height]) { Err(e) }
+                if let Err(e) = CommandOption::parse_tuple::<usize>(&args[0], 'x', 2, &mut [&mut config.frame_width, &mut config.frame_height]) { Err(e) }
                 else { Ok(args[1..].to_vec()) }
             },
             validator: | config: &Config | -> Result<i32, String>  {
@@ -144,13 +144,13 @@ lazy_static! {
             default: Some("30/1"),
             parser: | args: &Vec<String>, config: &mut Config | -> Result<Vec<String>, String> {
                 if args.len() == 0 { return Err("".to_string()); }
-                if let Ok(n) = u16::from_str(&args[0]) {
+                if let Ok(n) = usize::from_str(&args[0]) {
                     config.framerate = Some(Ratio::new(n, 1));
                     Ok(args[1..].to_vec())
                 }
                 else {
                     let (mut denom, mut numer) = (None, None);
-                    if let Err(e) = CommandOption::parse_tuple::<u16>(&args[0], '/', 2, &mut [&mut numer, &mut denom]) { Err(e) }
+                    if let Err(e) = CommandOption::parse_tuple::<usize>(&args[0], '/', 2, &mut [&mut numer, &mut denom]) { Err(e) }
                     else {
                         config.framerate = Some(Ratio::new(numer.unwrap(), denom.unwrap()));
                         Ok(vec![])

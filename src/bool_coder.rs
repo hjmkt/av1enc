@@ -1,6 +1,6 @@
 #![allow(dead_code)]
 #![allow(non_snake_case)]
-#![allow(non_upper_case_globals)] 
+#![allow(non_upper_case_globals)]
 
 use std::collections::VecDeque;
 use util::*;
@@ -43,19 +43,19 @@ impl BoolCoder {
         }
     }
 
-    fn push_bit(out_bits: &mut Vec<u8>, bit: u8) {
+    pub fn push_bit(&self, out_bits: &mut Vec<u8>, bit: u8) {
         out_bits.push(bit);
     }
 
-    fn push_bits_with_size(out_bits: &mut Vec<u8>, bits: u32, size: u8) {
+    pub fn push_bits_with_size(&self, out_bits: &mut Vec<u8>, bits: u32, size: u8) {
         for i in (0..size).rev() { out_bits.push(((bits>>i)&1) as u8); }
     }
 
-    fn push_bits(out_bits: &mut Vec<u8>, bits: &Vec<u8>) {
+    pub fn push_bits(&self, out_bits: &mut Vec<u8>, bits: &Vec<u8>) {
         for bit in bits { out_bits.push(*bit); }
     }
 
-    fn push_bits_align(out_bits: &mut Vec<u8>) {
+    pub fn push_bits_align(&self, out_bits: &mut Vec<u8>) {
         let size = (8-out_bits.len()%8)%8;
         for _ in 0..size { out_bits.push(0); }
     }
@@ -115,7 +115,7 @@ impl BoolCoder {
         symbol as u64
     }
 
-    fn decode_symbolp(&mut self, in_bits: &mut VecDeque<u8>, p: i32) -> u64 {
+    pub fn decode_symbolp(&mut self, in_bits: &mut VecDeque<u8>, p: i32) -> u64 {
         let mut cdf: Vec<i32> = vec![ ((p << 15) + 256 - p) >> 8, 1<<15, 0 ];
         self.decode_symbol(in_bits, &mut cdf)
     }
@@ -1139,7 +1139,7 @@ impl BoolCoder {
         let mut cdf: &mut [i32] = if tx_set==TX_SET_INTRA_1 {
             &mut tile_cdf.intra_tx_type_set1[tx_size_sqr[tx_size as usize] as usize][intra_dir]
         } else {
-            &mut tile_cdf.intra_tx_type_set2[tx_size_sqr[tx_size as usize] as usize][intra_dir]            
+            &mut tile_cdf.intra_tx_type_set2[tx_size_sqr[tx_size as usize] as usize][intra_dir]
         };
         self.encode_symbol(intra_tx_type as i32, out_bits, &mut cdf);
     }

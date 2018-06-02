@@ -36,7 +36,7 @@ enum ScalabilityModeIdc {
     SCALABILITY_SS,
 }
 
-struct ScalabilityStructure {
+pub struct ScalabilityStructure {
     spatial_layers: Vec<SpatialLayer>,
     temporal_group: Vec<TemporalGroup>,
 }
@@ -49,7 +49,7 @@ struct Timecode {
     time_offset_value: Vec<u8>,
 }
 
-enum MetaData {
+pub enum MetaData {
     METADATA_TYPE_ITUT_T35 { country_code: u16, payload_bytes: Vec<u16> },
     METADATA_TYPE_HDR_CLL { max_cll: u16, max_fall: u16 },
     METADATA_TYPE_HDR_MDCV {
@@ -73,15 +73,15 @@ enum MetaData {
     },
 }
 
-enum OBU<'a> {
-    OBU_SEQUENCE_HEADER(SequenceHeader),
-    OBU_TEMPORAL_DELIMITER,
-    OBU_FRAME_HEADER(FrameHeader),
-    OBU_REDUNDANT_FRAME_HEADER,
-    OBU_TILE_GROUP,
-    OBU_METADATA(MetaData),
-    OBU_FRAME {
+pub enum OBU<'a> {
+    OBU_SEQUENCE_HEADER(SequenceHeader), // 1
+    OBU_TEMPORAL_DELIMITER, // 2
+    OBU_FRAME_HEADER(FrameHeader), // 3
+    OBU_REDUNDANT_FRAME_HEADER, // 7
+    OBU_TILE_GROUP, // 4
+    OBU_METADATA(MetaData), // 5
+    OBU_FRAME { // 6
         frame: Frame<'a>
     },
-    OBU_PADDING(u32),
+    OBU_PADDING(u32), // 15
 }
