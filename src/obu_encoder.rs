@@ -10,6 +10,8 @@ use constants::ColorPrimaries::*;
 use constants::TransferCharacteristics::*;
 use constants::MatrixCoefficients::*;
 use constants::ChromaSamplePosition::*;
+use obu::MetaData::*;
+use obu::ScalabilityModeIdc::*;
 
 pub struct OBUEncoder<'a, 'b> where 'a: 'b {
     writer: &'b mut BinaryWriter<'a>,
@@ -18,6 +20,7 @@ pub struct OBUEncoder<'a, 'b> where 'a: 'b {
     order_hint_bits: usize,
     bit_depth: usize,
     num_planes: usize,
+    seen_frame_header: bool,
 }
 
 impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
@@ -29,6 +32,7 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
             order_hint_bits: 0,
             bit_depth: 8,
             num_planes: 3,
+            seen_frame_header: false,
         }
     }
 
@@ -287,7 +291,7 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                 self.coder.push_bit(out_bits, sequence_header.film_grain_params_present as u8);
             },
             &mut OBU_TEMPORAL_DELIMITER => {
-
+                self.seen_frame_header = false;
             },
             &mut OBU_FRAME_HEADER(ref frame_header) => {
 
@@ -299,13 +303,123 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
 
             },
             &mut OBU_METADATA(ref meta_data) => {
-
+                match meta_data {
+                    &METADATA_TYPE_ITUT_T35 { country_code: cc, payload_bytes: ref pb } => {
+                        self.coder.encode_leb128(out_bits, 4);
+                        self.coder.push_bits_with_size(out_bits, cc as u32, 8);
+                        if cc==0xFF {
+                            self.coder.push_bits_with_size(out_bits, 0 as u32, 8); // FIXME itu_t_t35_country_code_extension_byte
+                        }
+                        // FIXME itu_t_t35_payload_bytes not in spec
+                    },
+                    &METADATA_TYPE_HDR_CLL { max_cll: mc, max_fall: mf } => {
+                        self.coder.encode_leb128(out_bits, 1);
+                        self.coder.push_bits_with_size(out_bits, mc as u32, 16);
+                        self.coder.push_bits_with_size(out_bits, mf as u32, 16);
+                    },
+                    &METADATA_TYPE_HDR_MDCV {
+                        primary_chromaticity_x: pcx,
+                        primary_chromaticity_y: pcy,
+                        white_point_chromaticity_x: wpcx,
+                        white_point_chromaticity_y: wpcy,
+                        luminance_max: lmax,
+                        luminance_min: lmin,
+                    } => {
+                        self.coder.encode_leb128(out_bits, 2);
+                        for i in 0..3 {
+                            self.coder.push_bits_with_size(out_bits, pcx[i] as u32, 16);
+                            self.coder.push_bits_with_size(out_bits, pcy[i] as u32, 16);
+                        }
+                            self.coder.push_bits_with_size(out_bits, wpcx as u32, 16);
+                            self.coder.push_bits_with_size(out_bits, wpcy as u32, 16);
+                            self.coder.push_bits_with_size(out_bits, lmax as u32, 32);
+                            self.coder.push_bits_with_size(out_bits, lmin as u32, 32);
+                    },
+                    &METADATA_TYPE_SCALABILITY { mode_idc: mi, structure: ref st } => {
+                        self.coder.encode_leb128(out_bits, 3);
+                        self.coder.push_bits_with_size(out_bits, mi as u32, 8);
+                        if mi==SCALABILITY_SS {
+                            // scalability structure
+                            if let &Some(ref s) = st {
+                                self.coder.push_bits_with_size(out_bits, (Max!(s.spatial_layer_dimensions.len(), s.spatial_layer_descriptions.len())-1) as u32, 2);
+                                self.coder.push_bit(out_bits, (s.spatial_layer_dimensions.len()>0) as u8);
+                                self.coder.push_bit(out_bits, (s.spatial_layer_descriptions.len()>0) as u8);
+                                self.coder.push_bit(out_bits, (s.temporal_groups.len()>0) as u8);
+                                let scalability_structure_reserved_3bits = 0;
+                                self.coder.push_bits_with_size(out_bits, scalability_structure_reserved_3bits, 3);
+                                for dm in s.spatial_layer_dimensions.iter() {
+                                    self.coder.push_bits_with_size(out_bits, dm.max_width as u32, 16);
+                                    self.coder.push_bits_with_size(out_bits, dm.max_height as u32, 16);
+                                }
+                                for ds in s.spatial_layer_descriptions.iter() {
+                                    self.coder.push_bits_with_size(out_bits, ds.ref_id as u32, 8);
+                                }
+                                if s.temporal_groups.len()>0 {
+                                    self.coder.push_bits_with_size(out_bits, s.temporal_groups.len() as u32, 8);
+                                    for tg in s.temporal_groups.iter() {
+                                        self.coder.push_bits_with_size(out_bits, tg.temporal_id as u32, 3);
+                                        self.coder.push_bit(out_bits, tg.temporal_switching_up_point_flag);
+                                        self.coder.push_bit(out_bits, tg.spatial_switching_up_point_flag);
+                                        self.coder.push_bits_with_size(out_bits, tg.ref_pic_diffs.len() as u32, 3);
+                                        for d in tg.ref_pic_diffs.iter() {
+                                            self.coder.push_bits_with_size(out_bits, *d as u32, 8);
+                                        }
+                                    }
+                                }
+                            } else {
+                                assert!(false);
+                            }
+                        }
+                    },
+                    &METADATA_TYPE_TIMECODE {
+                        counting_type: ct,
+                        seconds: seconds,
+                        minutes: minutes,
+                        hours: hours,
+                        time_offset_length: tol,
+                        time_offset_value: tov,
+                    } => {
+                        self.coder.encode_leb128(out_bits, 3);
+                        self.coder.push_bits_with_size(out_bits, ct as u32, 5);
+                        if let (Some(s), Some(m), Some(h)) = (seconds, minutes, hours) {
+                            self.coder.push_bit(out_bits, 1);
+                            self.coder.push_bits_with_size(out_bits, s as u32, 6);
+                            self.coder.push_bits_with_size(out_bits, m as u32, 6);
+                            self.coder.push_bits_with_size(out_bits, h as u32, 5);
+                        } else {
+                            self.coder.push_bit(out_bits, 0);
+                            if let Some(s) = seconds {
+                                self.coder.push_bit(out_bits, 1);
+                                self.coder.push_bits_with_size(out_bits, s as u32, 6);
+                                if let Some(m) = minutes {
+                                    self.coder.push_bit(out_bits, 1);
+                                    self.coder.push_bits_with_size(out_bits, m as u32, 6);
+                                    if let Some(h) = hours {
+                                        self.coder.push_bit(out_bits, 1);
+                                        self.coder.push_bits_with_size(out_bits, h as u32, 5);
+                                    } else {
+                                        self.coder.push_bit(out_bits, 0);
+                                    }
+                                } else {
+                                    self.coder.push_bit(out_bits, 0);
+                                }
+                            } else {
+                                self.coder.push_bit(out_bits, 0);
+                            }
+                        }
+                        self.coder.push_bits_with_size(out_bits, tol as u32, 5);
+                        self.coder.push_bits_with_size(out_bits, tov as u32, tol);
+                    },
+                    _ => { assert!(false); }
+                };
             },
             &mut OBU_FRAME { ref frame } => {
 
             },
-            &mut OBU_PADDING(ref padding) => {
-
+            &mut OBU_PADDING(padding) => {
+                for i in 0..padding {
+                    self.coder.push_bits_with_size(out_bits, 0, 8);
+                }
             },
         };
     }
