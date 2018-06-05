@@ -59,7 +59,7 @@ pub struct OperatingParametersInfo {
 }
 
 pub struct OperatingPointsDecoderModel {
-    pub idc: Vec<u16>,
+    pub idc: u16,
     pub initial_display_delay: Option<u8>,
     pub operating_parameters_info: Option<OperatingParametersInfo>
 }

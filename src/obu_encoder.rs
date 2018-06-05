@@ -231,7 +231,7 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                     }
                 }
                 self.coder.push_bit(out_bits, sequence_header.color_config.separate_uv_delta_q as u8);
-                
+
                 if sequence_header.reduced_still_picture_header {
                     sequence_header.timing_info = None;
                 } else {
@@ -242,11 +242,49 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                         // timing info
                         self.coder.push_bits_with_size(out_bits, ti.num_units_in_display_tick as u32, 32);
                         self.coder.push_bits_with_size(out_bits, ti.time_scale as u32, 32);
+                        self.coder.push_bit(out_bits, ti.equal_picture_interval as u8);
+                        if ti.equal_picture_interval {
+                            self.coder.encode_uvlc(out_bits, ti.num_ticks_per_picture-1);
+                        }
+
+                        self.coder.push_bit(out_bits, sequence_header.decoder_model_info.is_some() as u8);
+                        if let Some(ref dmi) = sequence_header.decoder_model_info {
+                            self.coder.push_bits_with_size(out_bits, dmi.bitrate_scale as u32, 4);
+                            self.coder.push_bits_with_size(out_bits, dmi.buffer_size_scale as u32, 4);
+                            self.coder.push_bits_with_size(out_bits, (dmi.encoder_decoder_buffer_delay_length-1) as u32, 5);
+                            self.coder.push_bits_with_size(out_bits, dmi.num_units_in_decoding_tick as u32, 32);
+                            self.coder.push_bits_with_size(out_bits, (dmi.buffer_removal_delay_length-1) as u32, 5);
+                            self.coder.push_bits_with_size(out_bits, (dmi.frame_presentation_delay_length-1) as u32, 5);
+                        }
                     },
                     None => {
-
+                        sequence_header.decoder_model_info = None;
                     },
                 };
+                self.coder.push_bit(out_bits, if sequence_header.operating_points_decoder_model.len()>0 { 1 } else { 0 } as u8);
+                if sequence_header.operating_points_decoder_model.len()>0 {
+                    self.coder.push_bits_with_size(out_bits, (sequence_header.operating_points_decoder_model.len()-1) as u32, 5);
+                    for op in sequence_header.operating_points_decoder_model.iter() {
+                        self.coder.push_bits_with_size(out_bits, op.idc as u32, 12);
+                        self.coder.push_bit(out_bits, op.initial_display_delay.is_some() as u8);
+                        if let Some(idd) = op.initial_display_delay {
+                            self.coder.push_bits_with_size(out_bits, (idd-1) as u32, 4);
+                        }
+                        if sequence_header.decoder_model_info.is_some() {
+                            self.coder.push_bit(out_bits, op.operating_parameters_info.is_some() as u8);
+                            if let Some(ref opi) = op.operating_parameters_info {
+                                self.coder.encode_uvlc(out_bits, opi.bitrate-1);
+                                self.coder.encode_uvlc(out_bits, opi.buffer_size-1);
+                                self.coder.push_bit(out_bits, opi.cbr_flag as u8);
+                                let n = if let Some(ref dmi) = sequence_header.decoder_model_info { dmi.encoder_decoder_buffer_delay_length } else { 0 };
+                                self.coder.push_bits_with_size(out_bits, opi.decoder_buffer_delay as u32, n);
+                                self.coder.push_bits_with_size(out_bits, opi.encoder_buffer_delay as u32, n);
+                                self.coder.push_bit(out_bits, opi.low_delay_mode_flag as u8);
+                            }
+                        }
+                    }
+                }
+                self.coder.push_bit(out_bits, sequence_header.film_grain_params_present as u8);
             },
             &mut OBU_TEMPORAL_DELIMITER => {
 
