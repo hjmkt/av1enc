@@ -75,6 +75,7 @@ pub enum ChromaSamplePosition {
     CSP_RESERVED = 3,
 }
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum FrameType {
     KEY_FRAME = 0,
     INTER_FRAME = 1,
@@ -82,6 +83,7 @@ pub enum FrameType {
     SWITCH_FRAME = 3,
 }
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum FrameRestorationType {
     RESTORE_NONE = 0, // lr_type=0
     RESTORE_WIENER = 1, // lr_type=2
@@ -89,6 +91,7 @@ pub enum FrameRestorationType {
     RESTORE_SWITCHABLE = 3, // lr_type=1
 }
 
+#[derive(PartialEq, Copy, Clone)]
 pub enum Partition {
     PARTITION_NONE,
     PARTITION_HORZ,
@@ -185,13 +188,15 @@ pub enum TxSize {
 }
 }
 
-enum TxMode {
+#[derive(PartialEq, Copy, Clone)]
+pub enum TxMode {
     ONLY_4X4,
     TX_MODE_LARGEST,
     TX_MODE_SELECT,
 }
 
-enum MVClass {
+#[derive(PartialEq, Copy, Clone)]
+pub enum MVClass {
     MV_CLASS_0,
     MV_CLASS_1,
     MV_CLASS_2,
@@ -991,27 +996,27 @@ const sgr_params: [[usize; 4]; 1<<SGRPROJ_PARAMS_BITS] = [
 ];
 
 // FIXME
-const segmentation_feature_bits: [usize; SEG_LVL_MAX+1] = [
+pub const segmentation_feature_bits: [usize; SEG_LVL_MAX+1] = [
     8 , 6 , 6 , 6 , 6 , 3 , 0 , 0
 ];
 
-const segmentation_feature_signed: [bool; SEG_LVL_MAX+1] = [
+pub const segmentation_feature_signed: [bool; SEG_LVL_MAX+1] = [
     true , true , true , true , true , false , false , false
 ];
 
-const segmentation_feature_max: [usize; SEG_LVL_MAX+1] = [
+pub const segmentation_feature_max: [usize; SEG_LVL_MAX+1] = [
     255, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, MAX_LOOP_FILTER, 7, 0, 0
 ];
 
-const remap_lr_type: [FrameRestorationType; 4] = [
+pub const remap_lr_type: [FrameRestorationType; 4] = [
     FrameRestorationType::RESTORE_NONE,
     FrameRestorationType::RESTORE_SWITCHABLE,
     FrameRestorationType::RESTORE_WIENER,
     FrameRestorationType::RESTORE_SGRPROJ,
 ];
 
-const wiener_taps_mid: [isize; 3] = [ 3,  -7,  15 ];
-const sgrproj_xqd_mid: [isize; 2] = [ -32, 31 ];
+pub const wiener_taps_mid: [isize; 3] = [ 3,  -7,  15 ];
+pub const sgrproj_xqd_mid: [isize; 2] = [ -32, 31 ];
 
 const max_tx_depth: [usize; BLOCK_SIZES] = [
     0, 1, 1, 1,

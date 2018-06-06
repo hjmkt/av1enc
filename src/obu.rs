@@ -2,7 +2,6 @@
 #![allow(non_camel_case_types)]
 
 use sequence_header::SequenceHeader;
-use frame_header::FrameHeader;
 use frame::Frame;
 
 pub struct SpatialLayerDimension {
@@ -71,15 +70,15 @@ pub enum MetaData {
     },
 }
 
-pub enum OBU<'a> {
+pub enum OBU {
     OBU_SEQUENCE_HEADER(SequenceHeader), // 1
     OBU_TEMPORAL_DELIMITER, // 2
-    OBU_FRAME_HEADER(FrameHeader), // 3
+    OBU_FRAME_HEADER(Frame), // 3
     OBU_REDUNDANT_FRAME_HEADER, // 7
-    OBU_TILE_GROUP, // 4
+    OBU_TILE_GROUP(Frame), // 4
     OBU_METADATA(MetaData), // 5
     OBU_FRAME { // 6
-        frame: Frame<'a>
+        frame: Frame
     },
     OBU_PADDING(u32), // 15
 }

@@ -4,6 +4,8 @@
 
 #[macro_use] extern crate enum_primitive;
 #[macro_use] extern crate lazy_static;
+use std::rc::Rc;
+use std::cell::RefCell;
 extern crate colored;
 mod option;
 use option::*;
@@ -27,6 +29,7 @@ mod bool_coder;
 mod obu_encoder;
 mod common;
 mod block;
+mod encoder;
 
 use frame::*;
 use constants::*;
@@ -34,6 +37,7 @@ use bool_coder::*;
 use sequence_header::*;
 use obu_encoder::*;
 use obu::OBU::*;
+use encoder::*;
 
 
 fn main() {
@@ -92,7 +96,9 @@ fn main() {
 
     let mut coder = BoolCoder::new();
 
-    let mut obu_encoder = OBUEncoder::new(&mut writer, &mut coder);
+    let mut ectx = Rc::new(RefCell::new(EncoderContext::new()));
+
+    let mut obu_encoder = OBUEncoder::new(&ectx, &mut writer, &mut coder);
 
     for fr in 0..config.frames.unwrap() {
         let mut frame = Frame::new(FrameType::KEY_FRAME, 176, 144);
@@ -107,8 +113,7 @@ fn main() {
                 config.frame_height.unwrap()
             ));
             obu_encoder.encode_temporal_unit(&mut sequence_header_obu);
+            
         }
-
-        
     }
 }
