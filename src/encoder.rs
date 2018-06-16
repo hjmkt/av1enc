@@ -77,6 +77,11 @@ pub struct EncoderContext {
     pub tg_end: usize,
     pub frame_size_override_flag: bool,
     pub disable_frame_end_update_cdf: bool,
+    pub tile_num: usize,
+    pub delta_lf: [usize; FRAME_LF_COUNT],
+    pub ref_sgr_xqd: [[isize; 2]; 3],
+    pub ref_lr_wiener: [[[isize; WIENER_COEFFS]; 2]; 3],
+    pub read_deltas: bool,
 }
 
 impl EncoderContext {
@@ -163,5 +168,10 @@ impl EncoderContext {
         tg_end: 0,
         frame_size_override_flag: false,
         disable_frame_end_update_cdf: false,
+        tile_num: 0,
+        delta_lf: [0; FRAME_LF_COUNT],
+        ref_sgr_xqd: [[0; 2]; 3],
+        ref_lr_wiener: [[[0; WIENER_COEFFS]; 2]; 3],
+        read_deltas: false,
     }}
 }

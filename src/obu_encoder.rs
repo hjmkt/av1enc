@@ -21,6 +21,7 @@ use constants::InterpFilter::*;
 use constants::FrameRestorationType::*;
 use constants::TxMode::*;
 use frame::*;
+use tile_encoder::*;
 
 
 pub struct OBUEncoder<'a, 'b> where 'a: 'b {
@@ -1415,7 +1416,34 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                     ecx.tg_start = 0;
                     ecx.tg_end = num_tiles - 1;
                 } else {
-                    //let tile_bits = 
+                    let tile_bits = frame.tile_cols_log2() + frame.tile_rows_log2();
+                    self.coder.push_bits_with_size(out_bits, ecx.tg_start as u32, tile_bits as u8);
+                    self.coder.push_bits_with_size(out_bits, ecx.tg_end as u32, tile_bits as u8);
+                }
+                self.coder.push_bits_align(out_bits);
+
+                for n in ecx.tg_start..(ecx.tg_end+1) {
+                    ecx.tile_num = n;
+                    let last_tile = ecx.tile_num == ecx.tg_end;
+                    let mut tile_bits: Vec<u8> = vec![];
+                    {
+                        let mut tile_encoder = TileEncoder::new(&self.ectx.clone(), self.writer, self.coder);
+                        tile_encoder.encode_tile(frame, ecx.tile_num, &mut tile_bits);
+                    }
+                    let tile_size_bytes = (tile_bits.len()+7) / 8;
+                    if !last_tile {
+                        self.coder.encode_le(out_bits, (tile_size_bytes-1) as u64, ecx.tile_size_bytes as u8);
+                    }
+                }
+
+                if ecx.tg_end == frame.num_tiles()-1 {
+                    if !ecx.disable_frame_end_update_cdf {
+                        // frame_end_update_cdf
+                        // TODO
+                    }
+                    // decode frame wrapup
+                    // TODO
+                    ecx.seen_frame_header = false;
                 }
             },
             &mut OBU_METADATA(ref meta_data) => {

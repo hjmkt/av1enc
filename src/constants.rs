@@ -988,11 +988,19 @@ const upscale_filter: [[isize; SUPERRES_FILTER_TAPS]; SUPERRES_FILTER_SHIFTS] = 
     [ 0, 1, -2, 4, 127, -3, 1, 0 ],      [ 0, 0, -1, 2, 128, -1, 0, 0 ],
 ];
 
-const sgr_params: [[usize; 4]; 1<<SGRPROJ_PARAMS_BITS] = [
+pub const sgr_params: [[usize; 4]; 1<<SGRPROJ_PARAMS_BITS] = [
     [ 2, 12, 1, 4 ],  [ 2, 15, 1, 6 ],  [ 2, 18, 1, 8 ],  [ 2, 21, 1, 9 ],
     [ 2, 24, 1, 10 ], [ 2, 29, 1, 11 ], [ 2, 36, 1, 12 ], [ 2, 45, 1, 13 ],
     [ 2, 56, 1, 14 ], [ 2, 68, 1, 15 ], [ 0, 0, 1, 5 ],   [ 0, 0, 1, 8 ],
     [ 0, 0, 1, 11 ],  [ 0, 0, 1, 14 ],  [ 2, 30, 0, 0 ],  [ 2, 75, 0, 0 ]
+];
+
+pub const sgrproj_xqd_min: [isize; 2] = [
+    -96, -32
+];
+
+pub const sgrproj_xqd_max: [isize; 2] = [
+    31, 95
 ];
 
 // FIXME
@@ -1139,6 +1147,16 @@ pub const mi_width_log2: [usize; BLOCK_SIZES] = [
 
 pub const mi_height_log2: [usize; BLOCK_SIZES] = [
     2, 3, 2, 3, 4, 3, 4, 5, 4, 5, 6, 5, 6, 7, 6, 7, 4, 2, 5, 3, 6, 4
+];
+
+pub const num_4x4_blocks_wide: [usize; BLOCK_SIZES] = [
+    1, 1, 2, 2, 2, 3, 3, 3, 8, 8, 8,
+    16, 16, 16, 32, 32, 1, 4, 2, 8, 4, 16
+];
+
+pub const num_4x4_blocks_high: [usize; BLOCK_SIZES] = [
+    1, 2, 1, 2, 4, 2, 4, 8, 4, 8, 16,
+    8, 16, 32, 16, 32, 4, 1, 8, 2, 16, 4
 ];
 
 pub const tx_width: [usize; TX_SIZES_ALL] = [

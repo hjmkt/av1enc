@@ -4,6 +4,7 @@ use constants::*;
 use util::*;
 use sequence_header::DecoderModelInfo;
 use constants::InterpFilter::*;
+use block::*;
 
 
 pub struct TemporalPointInfo {
@@ -186,6 +187,10 @@ pub struct Frame {
     pub tile_col_starts: Vec<usize>,
     pub tile_row_starts: Vec<usize>,
     pub tile_groups: Vec<usize>,
+    pub lr_type: Vec<Vec<Vec<FrameRestorationType>>>,
+    pub lr_wiener: Vec<Vec<Vec<Vec<Vec<isize>>>>>,
+    pub lr_sgr_set: Vec<Vec<Vec<usize>>>,
+    pub lr_sgr_xqd: Vec<Vec<Vec<Vec<isize>>>>,
 
     pub original_y: Vec<i16>,
     pub original_u: Vec<i16>,
@@ -227,6 +232,8 @@ pub struct Frame {
     pub allow_warped_motion: bool,
     pub reduced_tx_set: bool,
     pub global_motion_params: GlobalMotionParams,
+
+    pub superblocks: Vec<Vec<Superblock>>,
 }
 
 impl Frame {
@@ -331,6 +338,11 @@ impl Frame {
                 is_rot_zoom: [false; NUM_REF_FRAMES as usize],
                 is_translation: [false; NUM_REF_FRAMES as usize],
             },
+            superblocks: vec![vec![]],
+            lr_type: vec![vec![vec![]]],
+            lr_wiener: vec![vec![vec![vec![vec![]]]]],
+            lr_sgr_set: vec![vec![vec![]]],
+            lr_sgr_xqd: vec![vec![vec![vec![]]]],
         }
     }
 
@@ -354,6 +366,10 @@ impl Frame {
 
     pub fn mi_cols(&self) -> usize {
         2 * ((self.frame_width+7)>>3)
+    }
+
+    pub fn num_tiles(&self) -> usize {
+        self.tile_col_starts.len() * self.tile_row_starts.len()
     }
 
     pub fn tile_cols(&self) -> usize {
