@@ -8,6 +8,7 @@ extern crate enum_primitive;
 use self::num::FromPrimitive;
 use self::enum_primitive::*;
 use self::TxType::*;
+use constants::BlockSize::*;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum ColorPrimaries {
@@ -105,7 +106,7 @@ pub enum Partition {
     PARTITION_VERT_4,
 }
 
-#[derive(PartialEq, Copy, Clone)]
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
 pub enum BlockSize {
     BLOCK_4X4,
     BLOCK_4X8,
@@ -304,7 +305,7 @@ pub const REFS_PER_FRAME: usize = 7; // Number of reference frames that can be u
 pub const TOTAL_REFS_PER_FRAME: usize = 8; // Number of reference frame types (including intra type)
 pub const BLOCK_SIZE_GROUPS: usize = 4; // Number of contexts when decoding y_mode
 pub const BLOCK_SIZES: usize = 22; // Number of different block sizes used
-pub const BLOCK_INVALID: usize = 22; // Sentinel value to mark partition choices that are not allowed
+//pub const BLOCK_INVALID: usize = 22; // Sentinel value to mark partition choices that are not allowed
 pub const MAX_SB_SIZE: usize = 128; // Maximum size of a superblock in luma samples
 pub const MI_SIZE: usize = 4; // Smallest size of a mode info block in luma samples
 pub const MI_SIZE_LOG2: usize = 2; // Base 2 logarithm of smallest size of a mode info block
@@ -1337,4 +1338,98 @@ pub const palette_color_context: [isize; PALETTE_MAX_COLOR_CONTEXT_HASH+1] = [
 use self::YMode::*;
 pub const filter_intra_mode_to_intra_dir: [YMode; INTRA_FILTER_MODES] = [
     DC_PRED, V_PRED, H_PRED, D157_PRED, DC_PRED
+];
+
+pub const partition_subsize: [[BlockSize; BLOCK_SIZES]; 10] = [
+    [
+                                    BLOCK_4X4,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X128,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X4,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X4,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_128X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X128,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X4,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_32X8,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_64X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ], [
+                                    BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_4X16,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_8X32,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_16X64,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID,
+        BLOCK_INVALID, BLOCK_INVALID, BLOCK_INVALID
+    ]
 ];

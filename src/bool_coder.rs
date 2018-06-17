@@ -15,6 +15,7 @@ use constants::RefFrame::*;
 use frame::*;
 use constants::InterpFilter::*;
 
+#[derive(Copy, Clone)]
 pub struct BoolCoder{
     bool_value: i32,
     bool_range: i32,

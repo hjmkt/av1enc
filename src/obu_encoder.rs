@@ -1427,7 +1427,8 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                     let last_tile = ecx.tile_num == ecx.tg_end;
                     let mut tile_bits: Vec<u8> = vec![];
                     {
-                        let mut tile_encoder = TileEncoder::new(&self.ectx.clone(), self.writer, self.coder);
+                        //let mut tile_encoder = TileEncoder::new(&self.ectx.clone(), self.writer, self.coder);
+                        let mut tile_encoder = TileEncoder::new(&self.ectx.clone(), self.coder);
                         tile_encoder.encode_tile(frame, ecx.tile_num, &mut tile_bits);
                     }
                     let tile_size_bytes = (tile_bits.len()+7) / 8;

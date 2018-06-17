@@ -8,28 +8,43 @@ use constants::*;
 use constants::BlockSize::*;
 use constants::FrameRestorationType::*;
 use block::*;
+use constants::Partition::*;
+use cdf::*;
 
 
-pub struct TileEncoder<'a, 'b> where 'a: 'b {
-    writer: &'b mut BinaryWriter<'a>,
+//pub struct TileEncoder<'a, 'b> where 'a: 'b {
+pub struct TileEncoder<'b> {
+//    writer: &'b mut BinaryWriter<'a>,
     coder: &'b mut BoolCoder,
     ectx: Rc<RefCell<EncoderContext>>,
     pub mi_row_start: usize,
     pub mi_row_end: usize,
     pub mi_col_start: usize,
     pub mi_col_end: usize,
+    pub avail_u: bool,
+    pub avail_l: bool,
+    pub cdf: CDF,
 }
 
-impl<'a, 'b> TileEncoder<'a, 'b> where 'a: 'b {
-    pub fn new(ectx: &Rc<RefCell<EncoderContext>>, writer: &'b mut BinaryWriter<'a>, coder: &'b mut BoolCoder) -> TileEncoder<'a, 'b> { TileEncoder{
-        writer: writer,
+//impl<'a, 'b> TileEncoder<'a, 'b> where 'a: 'b {
+impl<'b> TileEncoder<'b> {
+//    pub fn new(ectx: &Rc<RefCell<EncoderContext>>, writer: &'b mut BinaryWriter<'a>, coder: &'b mut BoolCoder) -> TileEncoder<'a, 'b> { TileEncoder{
+    pub fn new(ectx: &Rc<RefCell<EncoderContext>>, coder: &'b mut BoolCoder) -> TileEncoder<'b> { TileEncoder{
+//        writer: writer,
         coder: coder,
         ectx: Rc::clone(ectx),
         mi_row_start: 0,
         mi_row_end: 0,
         mi_col_start: 0,
         mi_col_end: 0,
+        avail_u: false,
+        avail_l: false,
+        cdf: default_cdf.clone(),
     }}
+
+    pub fn is_inside(&self, r: isize, c: isize) -> bool {
+        return c>=self.mi_col_start as isize && c<self.mi_col_end as isize && r>=self.mi_row_start as isize && r<self.mi_row_end as isize;
+    }
 
     pub fn encode_tile(&mut self, frame: &mut Frame, tile_num: usize, out_bits: &mut Vec<u8>) -> () {
         let mut sb_size;
@@ -70,13 +85,24 @@ impl<'a, 'b> TileEncoder<'a, 'b> where 'a: 'b {
                 {
                     let mut ecx = self.ectx.borrow_mut();
                     ecx.read_deltas = frame.delta_q_params.delta_q_present;
+
+                    // clear cdef r c
+                    frame.cdef_idx[r][c] = -1;
+                    if ecx.use_128x128_superblock {
+                        let cdef_size4 = num_4x4_blocks_wide[BLOCK_64X64 as usize];
+                        frame.cdef_idx[r][c+cdef_size4] = -1;
+                        frame.cdef_idx[r+cdef_size4][c] = -1;
+                        frame.cdef_idx[r+cdef_size4][c+cdef_size4] = -1;
+                    }
                 }
-                // clear cdef
+
                 // clear block decoded flags (r, c, sb_size4)
 
                 self.encode_lr(out_bits, frame, r, c, sb_size);
 
                 // encode partition r, c, sb_size
+                let mut superblock = Superblock::new(sb_size, c*4, r*4);
+                self.encode_superblock(&mut superblock, frame, out_bits);
 
                 c += sb_size4;
             }
@@ -128,7 +154,7 @@ impl<'a, 'b> TileEncoder<'a, 'b> where 'a: 'b {
                                 self.coder.push_bit(out_bits, use_wiener as u8);
                                 if use_wiener { RESTORE_WIENER }  else { RESTORE_NONE }
                             },
-                            RESTORE_SGRPROG => {
+                            RESTORE_SGRPROJ => {
                                 let use_sgrproj = sb.lr_units[plane][unit_row-unit_row_start][unit_col-unit_col_start].use_sgrproj;
                                 self.coder.push_bit(out_bits, use_sgrproj as u8);
                                 if use_sgrproj { RESTORE_SGRPROJ }  else { RESTORE_NONE }
@@ -230,5 +256,194 @@ impl<'a, 'b> TileEncoder<'a, 'b> where 'a: 'b {
                 }
             }
         }
+    }
+
+    pub fn encode_superblock(&mut self, sb: &mut Superblock, frame: &mut Frame, out_bits: &mut Vec<u8>) {
+        let r = sb.y/4;
+        let c = sb.x/4;
+        let mut part_tree = PartitionTree::new(sb.mi_size);
+        self.encode_partition(sb, r, c, frame, out_bits, &mut part_tree);
+        sb.part_tree = part_tree;
+    }
+
+    pub fn encode_partition(&mut self, sb: &mut Superblock, r: usize, c: usize, frame: &mut Frame, out_bits: &mut Vec<u8>, part_tree: &mut PartitionTree) {
+        let mi_rows = frame.mi_rows();
+        let mi_cols = frame.mi_cols();
+        if r>=mi_rows || c>=mi_cols {
+            return;
+        }
+
+        self.avail_u = self.is_inside(r as isize - 1, c as isize);
+        self.avail_l = self.is_inside(r as isize, c as isize - 1);
+        let num4x4 = num_4x4_blocks_wide[part_tree.bsize as usize];
+        let half_block4x4 = num4x4 >> 1;
+        let quarter_block4x4 = half_block4x4 >> 1;
+        let has_rows = r+half_block4x4 < mi_rows;
+        let has_cols = c+half_block4x4 < mi_cols;
+
+        let mut best_part_bits: Vec<u8> = vec![];
+        let mut best_part_tree = part_tree.clone();
+        let mut best_cost = <u64>::max_value();
+        let mut best_coder = self.coder.clone();
+        let mut best_cdf = self.cdf.clone();
+        for partition in [
+            PARTITION_NONE, PARTITION_HORZ, PARTITION_VERT, PARTITION_SPLIT,
+            PARTITION_HORZ_A, PARTITION_HORZ_B, PARTITION_VERT_A, PARTITION_VERT_B, PARTITION_HORZ_4, PARTITION_VERT_4
+        ].iter() {
+            let mut  part_bits: Vec<u8> = vec![];
+            if part_tree.bsize < BLOCK_8X8 {
+                if *partition != PARTITION_NONE {
+                    continue;
+                }
+            } else if has_rows && has_cols {
+                self.coder.encode_partition(&mut part_bits, &mut self.cdf, part_tree.bsize, self.avail_u, self.avail_l, *partition);
+            } else if has_cols {
+                match *partition {
+                    PARTITION_SPLIT => {
+                        self.coder.encode_split_or_horz(&mut part_bits, &mut self.cdf, part_tree.bsize, self.avail_u, self.avail_l, 1);
+                    },
+                    PARTITION_HORZ => {
+                        self.coder.encode_split_or_horz(&mut part_bits, &mut self.cdf, part_tree.bsize, self.avail_u, self.avail_l, 0);
+                    },
+                    _ => { continue; }
+                }
+            } else if has_rows {
+                match *partition {
+                    PARTITION_SPLIT => {
+                        self.coder.encode_split_or_vert(&mut part_bits, &mut self.cdf, part_tree.bsize, self.avail_u, self.avail_l, 1);
+                    },
+                    PARTITION_VERT => {
+                        self.coder.encode_split_or_vert(&mut part_bits, &mut self.cdf, part_tree.bsize, self.avail_u, self.avail_l, 0);
+                    },
+                    _ => { continue; }
+                }
+            } else {
+                if *partition != PARTITION_SPLIT {
+                    continue;
+                }
+            }
+            part_tree.part_type = *partition;
+            let sub_size = partition_subsize[*partition as usize][part_tree.bsize as usize];
+            let split_size = partition_subsize[PARTITION_SPLIT as usize][part_tree.bsize as usize];
+
+            match *partition {
+                PARTITION_NONE => {
+                    self.encode_block(sb, r, c, frame, &mut part_bits, part_tree);
+                },
+                PARTITION_HORZ => {
+                    part_tree.partitions = vec![ PartitionTree::new(sub_size) ];
+                    self.encode_block(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    if has_rows {
+                        part_tree.partitions.push(PartitionTree::new(sub_size));
+                        self.encode_block(sb, r+half_block4x4, c, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    }
+                },
+                PARTITION_VERT => {
+                    part_tree.partitions = vec![ PartitionTree::new(sub_size) ];
+                    self.encode_block(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    if has_cols {
+                        part_tree.partitions.push(PartitionTree::new(sub_size));
+                        self.encode_block(sb, r, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    }
+                },
+                PARTITION_SPLIT => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                    ];
+                    self.encode_partition(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_partition(sb, r, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_partition(sb, r+half_block4x4, c, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                    self.encode_partition(sb, r+half_block4x4, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[3]);
+                },
+                PARTITION_HORZ_A => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(split_size),
+                        PartitionTree::new(split_size),
+                        PartitionTree::new(sub_size),
+                    ];
+                    self.encode_block(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_block(sb, r, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_block(sb, r+half_block4x4, c, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                },
+                PARTITION_HORZ_B => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(split_size),
+                        PartitionTree::new(split_size),
+                    ];
+                    self.encode_block(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_block(sb, r+half_block4x4, c, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_block(sb, r, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                },
+                PARTITION_VERT_A => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(split_size),
+                        PartitionTree::new(split_size),
+                        PartitionTree::new(sub_size),
+                    ];
+                    self.encode_block(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_block(sb, r+half_block4x4, c, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_block(sb, r, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                },
+                PARTITION_VERT_B => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(split_size),
+                        PartitionTree::new(split_size),
+                    ];
+                    self.encode_block(sb, r, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_block(sb, r, c+half_block4x4, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_block(sb, r+half_block4x4, c, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                },
+                PARTITION_HORZ_4 => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                    ];
+                    self.encode_block(sb, r+quarter_block4x4*0, c, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_block(sb, r+quarter_block4x4*1, c, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_block(sb, r+quarter_block4x4*2, c, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                    if r+quarter_block4x4*3 < mi_rows {
+                        part_tree.partitions.push(PartitionTree::new(sub_size));
+                        self.encode_block(sb, r+quarter_block4x4*3, c, frame, &mut part_bits, &mut part_tree.partitions[3]);
+                    }
+                },
+                PARTITION_VERT_4 => {
+                    part_tree.partitions = vec![
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                        PartitionTree::new(sub_size),
+                    ];
+                    self.encode_block(sb, r, c+quarter_block4x4*0, frame, &mut part_bits, &mut part_tree.partitions[0]);
+                    self.encode_block(sb, r, c+quarter_block4x4*1, frame, &mut part_bits, &mut part_tree.partitions[1]);
+                    self.encode_block(sb, r, c+quarter_block4x4*2, frame, &mut part_bits, &mut part_tree.partitions[2]);
+                    if c+quarter_block4x4*3 < mi_cols {
+                        part_tree.partitions.push(PartitionTree::new(sub_size));
+                        self.encode_block(sb, r+quarter_block4x4*3, c, frame, &mut part_bits, &mut part_tree.partitions[3]);
+                    }
+                },
+            }
+
+            let cost = 0; // TODO
+            if cost < best_cost {
+                best_cost = cost;
+                best_part_tree = part_tree.clone();
+                best_part_bits = part_bits;
+                best_coder = self.coder.clone();
+                best_cdf = self.cdf.clone();
+            }
+        }
+        *self.coder = best_coder;
+        self.cdf = best_cdf;
+        *part_tree = best_part_tree;
+        self.coder.push_bits(out_bits, &best_part_bits);
+    }
+
+    pub fn encode_block(&mut self, sb: &mut Superblock, r: usize, c: usize, frame: &mut Frame, out_bits: &mut Vec<u8>, part_tree: &mut PartitionTree) -> () {
+
     }
 }

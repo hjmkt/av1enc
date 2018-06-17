@@ -4,6 +4,7 @@
 use constants::*;
 use self::FrameRestorationType::*;
 
+#[derive(Copy, Clone)]
 pub struct CDF {
     pub intra_frame_y_mode: [[[i32; INTRA_MODES+1]; INTRA_MODE_CONTEXTS]; INTRA_MODE_CONTEXTS],
     pub y_mode: [[i32; INTRA_MODES+1]; BLOCK_SIZE_GROUPS],

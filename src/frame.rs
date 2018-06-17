@@ -234,6 +234,7 @@ pub struct Frame {
     pub global_motion_params: GlobalMotionParams,
 
     pub superblocks: Vec<Vec<Superblock>>,
+    pub cdef_idx: Vec<Vec<isize>>,
 }
 
 impl Frame {
@@ -343,6 +344,7 @@ impl Frame {
             lr_wiener: vec![vec![vec![vec![vec![]]]]],
             lr_sgr_set: vec![vec![vec![]]],
             lr_sgr_xqd: vec![vec![vec![vec![]]]],
+            cdef_idx: vec![vec![]],
         }
     }
 
