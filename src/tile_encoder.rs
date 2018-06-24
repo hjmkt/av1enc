@@ -10,6 +10,8 @@ use constants::FrameRestorationType::*;
 use block::*;
 use constants::Partition::*;
 use cdf::*;
+use util::*;
+use constants::RefFrame::*;
 
 
 //pub struct TileEncoder<'a, 'b> where 'a: 'b {
@@ -24,6 +26,16 @@ pub struct TileEncoder<'b> {
     pub avail_u: bool,
     pub avail_l: bool,
     pub cdf: CDF,
+    pub mi_row: usize,
+    pub mi_col: usize,
+    pub mi_size: BlockSize,
+    pub has_chroma: bool,
+    pub avail_u_chroma: bool,
+    pub avail_l_chroma: bool,
+    pub y_mode: usize,
+    pub lossless: bool,
+    pub last_active_seg_id: usize,
+    pub skip: bool,
 }
 
 //impl<'a, 'b> TileEncoder<'a, 'b> where 'a: 'b {
@@ -40,6 +52,16 @@ impl<'b> TileEncoder<'b> {
         avail_u: false,
         avail_l: false,
         cdf: default_cdf.clone(),
+        mi_row: 0,
+        mi_col: 0,
+        mi_size: BLOCK_128X128,
+        has_chroma: true,
+        avail_u_chroma: false,
+        avail_l_chroma: false,
+        y_mode: 0,
+        lossless: false,
+        last_active_seg_id: 0,
+        skip: false,
     }}
 
     pub fn is_inside(&self, r: isize, c: isize) -> bool {
@@ -444,6 +466,239 @@ impl<'b> TileEncoder<'b> {
     }
 
     pub fn encode_block(&mut self, sb: &mut Superblock, r: usize, c: usize, frame: &mut Frame, out_bits: &mut Vec<u8>, part_tree: &mut PartitionTree) -> () {
+        self.mi_row = r;
+        self.mi_col = c;
+        self.mi_size = part_tree.bsize;
+        let bw4 = num_4x4_blocks_wide[part_tree.bsize as usize];
+        let bh4 = num_4x4_blocks_high[part_tree.bsize as usize];
+        if bh4==1 && frame.subsampling_y && (self.mi_row&1)==0 {
+            self.has_chroma = false;
+        } else if bw4==1 && frame.subsampling_x && (self.mi_col&1)==0 {
+            self.has_chroma = false;
+        } else {
+            let mut ecx = self.ectx.borrow_mut();
+            self.has_chroma = ecx.num_planes > 1;
+        }
+        self.avail_u = self.is_inside(r as isize - 1, c as isize);
+        self.avail_l = self.is_inside(r as isize, c as isize - 1);
+        self.avail_u_chroma = self.avail_u;
+        self.avail_l_chroma = self.avail_l;
+        if self.has_chroma {
+            if frame.subsampling_y && bh4==1 {
+                self.avail_u_chroma = self.is_inside(r as isize - 2, c as isize);
+            }
+            if frame.subsampling_x && bw4==1 {
+                self.avail_l_chroma = self.is_inside(r as isize, c as isize - 2);
+            }
+        } else {
+            self.avail_u_chroma = false;
+            self.avail_l_chroma = false;
+        }
 
+        // mode info
+        self.encode_mode_info(sb, frame, out_bits, part_tree);
+    }
+
+    pub fn encode_segment_id(&mut self, sb: &mut Superblock, frame: &mut Frame, out_bits: &mut Vec<u8>, part_tree: &mut PartitionTree) -> () {
+        let prev_ul = if self.avail_u && self.avail_l {
+            frame.mis[self.mi_row-1][self.mi_col-1].unwrap().segment_id as isize
+        } else { -1 };
+        let prev_u = if self.avail_u {
+            frame.mis[self.mi_row-1][self.mi_col].unwrap().segment_id as isize
+        } else { -1 };
+        let prev_l = if self.avail_l {
+            frame.mis[self.mi_row][self.mi_col-1].unwrap().segment_id as isize
+        } else { -1 };
+        let pred = if prev_u==-1 {
+            if prev_l==-1 { 0 } else { prev_l }
+        } else if prev_l==-1 {
+            prev_u
+        } else {
+            if prev_ul==prev_u { prev_u } else { prev_l }
+        };
+        if self.skip {
+            part_tree.segment_id = pred as usize;
+        } else {
+            let neg_interleave = |v: usize, rf: usize, max: usize| -> usize {
+                if rf==0{
+                    v
+                } else if rf>=(max-1) {
+                    max - 1 - v
+                } else if 2*rf < max {
+                    let d1 = ((v-rf)<<1) - 1;
+                    let d2 = (rf-v)<<1;
+                    if d1 <= 2*rf {
+                        d1
+                    } else if d2 <= 2*rf {
+                        d2
+                    } else {
+                        v
+                    }
+                } else {
+                    let d1 = ((v-rf)<<1) - 1;
+                    let d2 = (rf-v)<<1;
+                    if d1 <= 2*(max-rf-1) {
+                        d1
+                    } else if d2 <= 2*(max-rf-1) {
+                        d2
+                    } else {
+                        rf-v-1
+                    }
+                }
+            };
+            let v = neg_interleave(part_tree.segment_id, pred as usize, self.last_active_seg_id+1);
+            self.coder.encode_segment_id(out_bits, &mut self.cdf, v, prev_u as isize, prev_l as isize, prev_ul as isize);
+        }
+    }
+
+    pub fn encode_mode_info(&mut self, sb: &mut Superblock, frame: &mut Frame, out_bits: &mut Vec<u8>, part_tree: &mut PartitionTree) -> () {
+        let frame_is_intra = self.ectx.borrow_mut().frame_is_intra;
+        if frame_is_intra {
+            // intra frame mode info
+            self.skip = false;
+            let seg_id_pre_skip = self.ectx.borrow_mut().seg_id_pre_skip;
+            if seg_id_pre_skip {
+                // intra segment id
+                if frame.segmentation_params.segmentation_enabled {
+                    self.encode_segment_id(sb, frame, out_bits, part_tree);
+                } else {
+                    part_tree.segment_id = 0;
+                }
+                self.lossless = self.ectx.borrow_mut().lossless_array[part_tree.segment_id];
+            }
+
+            let skip_mode = 0;
+            // encode skip
+            let seg_feature_active_idx = |idx: usize, feature: usize, frame: &mut Frame| -> bool {
+                return frame.segmentation_params.segmentation_enabled && frame.segmentation_params.feature_value[idx][feature].is_some()
+            };
+            if seg_id_pre_skip && seg_feature_active_idx(part_tree.segment_id, SEG_LVL_SKIP, frame) {
+                part_tree.skip = true;
+            } else {
+                self.coder.encode_skip(out_bits, &mut self.cdf, part_tree.skip as usize, frame, self.mi_row, self.mi_col);
+            }
+
+            if !seg_id_pre_skip {
+                // intra segment id
+                if frame.segmentation_params.segmentation_enabled {
+                    self.encode_segment_id(sb, frame, out_bits, part_tree);
+                } else {
+                    part_tree.segment_id = 0;
+                }
+                self.lossless = self.ectx.borrow_mut().lossless_array[part_tree.segment_id];
+            }
+
+            // encode cdef
+            let coded_lossless = self.ectx.borrow_mut().coded_lossless;
+            let enable_cdef = self.ectx.borrow_mut().enable_cdef;
+            if !(self.skip || coded_lossless || !enable_cdef || frame.allow_intrabc) {
+                let cdef_size4 = num_4x4_blocks_wide[BLOCK_64X64 as usize];
+                let cdef_mask4 = !(cdef_size4 - 1);
+                let r = self.mi_row & cdef_mask4;
+                let c = self.mi_col & cdef_mask4;
+                if frame.cdef_idx[r][c] == -1 {
+                    self.coder.encode_literal(out_bits, part_tree.cdef_idx as u64, frame.cdef_params.cdef_bits as u8);
+                    let w4 = num_4x4_blocks_wide[part_tree.bsize as usize];
+                    let h4 = num_4x4_blocks_high[part_tree.bsize as usize];
+                    {
+                        let mut i = 0;
+                        while i < r+h4 {
+                            let mut j = 0;
+                            while j < c+w4 {
+                                frame.cdef_idx[i][j] = part_tree.cdef_idx;
+                                j += cdef_size4;
+                            }
+                            i += cdef_size4;
+                        }
+                    }
+                }
+            }
+
+            // encode delta_q index
+            let use_128x128_superblock = self.ectx.borrow_mut().use_128x128_superblock;
+            let sb_size = if use_128x128_superblock { BLOCK_128X128 } else { BLOCK_64X64 };
+            let read_deltas = self.ectx.borrow_mut().read_deltas;
+            if !(part_tree.bsize==sb_size && part_tree.skip) && read_deltas {
+                let mut current_q_index = &mut self.ectx.borrow_mut().current_q_index;
+                let delta_q_res = frame.delta_q_params.delta_q_res;
+                let delta_q_index = (part_tree.q_index as isize - *current_q_index as isize) >> delta_q_res;
+                let delta_q_abs = Abs!(delta_q_index) as usize;
+                if delta_q_index != 0 {
+                    if delta_q_abs < DELTA_Q_SMALL {
+                        self.coder.encode_delta_q_abs(out_bits, &mut self.cdf, delta_q_abs);
+                    } else {
+                        self.coder.encode_delta_q_abs(out_bits, &mut self.cdf, DELTA_Q_SMALL);
+                        let delta_q_rem_bits = msb16((delta_q_abs-1) as u16);
+                        self.coder.encode_literal(out_bits, (delta_q_rem_bits-1) as u64, 3);
+                        let delta_q_abs_bits = (delta_q_abs-1) - (1<<(delta_q_rem_bits-1));
+                        self.coder.encode_literal(out_bits, delta_q_abs_bits as u64, delta_q_rem_bits);
+                    }
+                    let delta_q_sign_bit = if delta_q_index < 0 { 1 } else { 0 };
+                    self.coder.encode_literal(out_bits, delta_q_sign_bit as u64, 1);
+                } else {
+                    self.coder.encode_delta_q_abs(out_bits, &mut self.cdf, delta_q_abs);
+                }
+                *current_q_index = part_tree.q_index;
+            }
+
+            // encode delta lf
+            if !(part_tree.bsize==sb_size && part_tree.skip) && read_deltas && frame.delta_lf_params.delta_lf_present {
+                let frame_lf_count = if frame.delta_lf_params.delta_lf_multi {
+                    let num_planes = self.ectx.borrow_mut().num_planes;
+                    if num_planes > 1 { FRAME_LF_COUNT } else { FRAME_LF_COUNT-2 }
+                } else { 1 };
+                for i in 0..frame_lf_count {
+                    let current_delta_lf = &mut self.ectx.borrow_mut().delta_lf[i];
+                    let delta_lf_res = frame.delta_lf_params.delta_lf_res;
+                    let delta_lf = (part_tree.delta_lf[i]-*current_delta_lf) >> delta_lf_res;
+                    if delta_lf != 0 {
+                        let delta_lf_abs = Abs!(delta_lf) as usize;
+                        if delta_lf_abs < DELTA_LF_SMALL {
+                            self.coder.encode_delta_lf_abs(out_bits, &mut self.cdf, delta_lf_abs, frame.delta_lf_params.delta_lf_multi as usize, i);
+                        } else {
+                            self.coder.encode_delta_lf_abs(out_bits, &mut self.cdf, DELTA_LF_SMALL, frame.delta_lf_params.delta_lf_multi as usize, i);
+                            let delta_lf_rem_bits = msb16((delta_lf_abs-1) as u16);
+                            self.coder.encode_literal(out_bits, (delta_lf_rem_bits-1) as u64, 3);
+                            let delta_lf_abs_bits = (delta_lf_abs-1) - (1<<(delta_lf_rem_bits-1));
+                            self.coder.encode_literal(out_bits, (delta_lf_abs_bits-1) as u64, delta_lf_rem_bits);
+                        }
+                        let delta_lf_sign_bits = if delta_lf < 0 { 1 } else { 0 };
+                        self.coder.encode_literal(out_bits, delta_lf_sign_bits as u64, 1);
+                    } else {
+                        self.coder.encode_delta_lf_abs(out_bits, &mut self.cdf, 0, frame.delta_lf_params.delta_lf_multi as usize, i);
+                    }
+                    *current_delta_lf = part_tree.delta_lf[i];
+                }
+            }
+
+            self.ectx.borrow_mut().read_deltas = false;
+
+            // encode is_inter
+            if skip_mode > 0 {
+                part_tree.is_inter = true;
+            } else {
+                let seg_feature_active_idx = |idx: usize, feature: usize, frame: &mut Frame| -> bool {
+                    return frame.segmentation_params.segmentation_enabled && frame.segmentation_params.feature_value[idx][feature].is_some()
+                };
+                if seg_feature_active_idx(part_tree.segment_id, SEG_LVL_REF_FRAME, frame) {
+                    part_tree.is_inter = frame.segmentation_params.feature_value[part_tree.segment_id][SEG_LVL_REF_FRAME].unwrap() != INTRA_FRAME as isize;
+                } else if seg_feature_active_idx(part_tree.segment_id, SEG_LVL_GLOBALMV, frame) {
+                    part_tree.is_inter = true;
+                } else {
+                    self.coder.encode_is_inter(out_bits, &mut self.cdf, part_tree.is_inter, self.mi_row, self.mi_col, frame);
+                }
+            }
+
+            if part_tree.is_inter {
+                // inter block mode info
+                
+            } else {
+                // intra block mode info
+
+            }
+        } else {
+            // inter frame mode info
+
+        }
     }
 }

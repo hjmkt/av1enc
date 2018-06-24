@@ -16,6 +16,12 @@ pub struct PartitionTree {
     pub part_type: Partition,
     pub partitions: Vec<PartitionTree>,
     pub bsize: BlockSize,
+    pub segment_id: usize,
+    pub skip: bool,
+    pub cdef_idx: isize,
+    pub q_index: usize,
+    pub delta_lf: [isize; FRAME_LF_COUNT],
+    pub is_inter: bool,
 }
 
 impl PartitionTree {
@@ -23,6 +29,12 @@ impl PartitionTree {
         part_type: PARTITION_NONE,
         partitions: vec![],
         bsize: bsize,
+        segment_id: 0,
+        skip: false,
+        cdef_idx: 0,
+        q_index: 0,
+        delta_lf: [0; FRAME_LF_COUNT],
+        is_inter: false,
     }}
 
     pub fn clone(&self) -> PartitionTree { PartitionTree {
@@ -35,6 +47,12 @@ impl PartitionTree {
             tmp
         },
         bsize: self.bsize,
+        segment_id: self.segment_id,
+        skip: self.skip,
+        cdef_idx: self.cdef_idx,
+        q_index: self.q_index,
+        delta_lf: self.delta_lf,
+        is_inter: self.is_inter,
     }}
 }
 

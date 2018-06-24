@@ -84,7 +84,6 @@ pub struct SequenceHeader {
     pub enable_jnt_comp: bool,
     pub seq_choose_screen_content_tools: bool,
     pub seq_choose_integer_mv: bool,
-    pub enable_cdef: bool,
     pub decoder_model_info: Option<DecoderModelInfo>,
 }
 
@@ -106,7 +105,6 @@ impl SequenceHeader {
         enable_jnt_comp: false,
         seq_choose_screen_content_tools: false,
         seq_choose_integer_mv: false,
-        enable_cdef: false,
         decoder_model_info: None,
     }}
 }

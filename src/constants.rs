@@ -1194,6 +1194,7 @@ pub struct ModeInfo {
     pub palette_size: [usize; 3],
     pub comp_group_idx: usize,
     pub compound_idx: usize,
+    pub segment_id: usize,
 }
 
 use self::TxSize::*;

@@ -180,7 +180,7 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                     }
                 }
                 self.coder.push_bit(out_bits, ecx.enable_superres as u8);
-                self.coder.push_bit(out_bits, sequence_header.enable_cdef as u8);
+                self.coder.push_bit(out_bits, ecx.enable_cdef as u8);
                 self.coder.push_bit(out_bits, ecx.enable_restoration as u8);
                 // color config
                 self.coder.push_bit(out_bits, ecx.color_config.high_bitdepth as u8);
