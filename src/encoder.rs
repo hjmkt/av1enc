@@ -5,6 +5,8 @@ use frame::*;
 use constants::ChromaSamplePosition::*;
 use constants::FrameRestorationType::*;
 use constants::TxMode::*;
+use constants::RefFrame::*;
+use common::*;
 
 pub struct EncoderContext {
     pub show_existing_frame: bool,
@@ -71,7 +73,7 @@ pub struct EncoderContext {
     pub uses_chroma_lr: bool,
     pub tx_mode: TxMode,
     pub skip_mode_allowed: bool,
-    pub skip_mode_frame: [usize; 2],
+    pub skip_mode_frame: [RefFrame; 2],
     pub enable_warped_motion: bool,
     pub tg_start: usize,
     pub tg_end: usize,
@@ -83,6 +85,7 @@ pub struct EncoderContext {
     pub ref_lr_wiener: [[[isize; WIENER_COEFFS]; 2]; 3],
     pub read_deltas: bool,
     pub enable_cdef: bool,
+    pub motion_field_mvs: Vec<Vec<Vec<MotionVector>>>,
 }
 
 impl EncoderContext {
@@ -163,7 +166,7 @@ impl EncoderContext {
         loop_restoration_size: [0; 3],
         tx_mode: ONLY_4X4,
         skip_mode_allowed: true,
-        skip_mode_frame: [0; 2],
+        skip_mode_frame: [LAST_FRAME; 2],
         enable_warped_motion: false,
         tg_start: 0,
         tg_end: 0,
@@ -175,5 +178,6 @@ impl EncoderContext {
         ref_lr_wiener: [[[0; WIENER_COEFFS]; 2]; 3],
         read_deltas: false,
         enable_cdef: false,
+        motion_field_mvs: vec![vec![vec![]]],
     }}
 }

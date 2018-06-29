@@ -22,6 +22,9 @@ use constants::FrameRestorationType::*;
 use constants::TxMode::*;
 use frame::*;
 use tile_encoder::*;
+extern crate num;
+extern crate enum_primitive;
+use self::num::FromPrimitive;
 
 
 pub struct OBUEncoder<'a, 'b> where 'a: 'b {
@@ -1148,8 +1151,8 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                             ecx.skip_mode_allowed = false;
                         } else if backward_idx >= 0 {
                             ecx.skip_mode_allowed = true;
-                            ecx.skip_mode_frame[0] = (LAST_FRAME as isize + Min!(forward_idx, backward_idx)) as usize;
-                            ecx.skip_mode_frame[1] = (LAST_FRAME as isize + Max!(forward_idx, backward_idx)) as usize;
+                            ecx.skip_mode_frame[0] = RefFrame::from_isize(LAST_FRAME as isize + Min!(forward_idx, backward_idx)).unwrap();
+                            ecx.skip_mode_frame[1] = RefFrame::from_isize(LAST_FRAME as isize + Max!(forward_idx, backward_idx)).unwrap();
                         } else {
                             let mut second_forward_idx: isize = -1;
                             let mut second_forward_hint = 0;
@@ -1166,8 +1169,8 @@ impl<'a, 'b> OBUEncoder<'a, 'b> where 'a: 'b {
                                 ecx.skip_mode_allowed = false;
                             } else {
                                 ecx.skip_mode_allowed = true;
-                                ecx.skip_mode_frame[0] = (LAST_FRAME as isize + Min!(forward_idx, second_forward_idx)) as usize;
-                                ecx.skip_mode_frame[1] = (LAST_FRAME as isize + Max!(forward_idx, second_forward_idx)) as usize;
+                                ecx.skip_mode_frame[0] = RefFrame::from_isize(LAST_FRAME as isize + Min!(forward_idx, second_forward_idx)).unwrap();
+                                ecx.skip_mode_frame[1] = RefFrame::from_isize(LAST_FRAME as isize + Max!(forward_idx, second_forward_idx)).unwrap();
                             }
                         }
                     }

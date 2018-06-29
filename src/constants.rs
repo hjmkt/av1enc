@@ -9,6 +9,7 @@ use self::num::FromPrimitive;
 use self::enum_primitive::*;
 use self::TxType::*;
 use constants::BlockSize::*;
+use common::*;
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum ColorPrimaries {
@@ -133,6 +134,7 @@ pub enum BlockSize {
     BLOCK_INVALID,
 }
 
+enum_from_primitive! {
 #[derive(PartialEq, Copy, Clone)]
 pub enum YMode {
     DC_PRED,
@@ -161,6 +163,7 @@ pub enum YMode {
     NEW_NEARMV,
     GLOBAL_GLOBALMV,
     NEW_NEWMV,
+}
 }
 
 enum_from_primitive! {
@@ -196,6 +199,7 @@ pub enum TxMode {
     TX_MODE_SELECT,
 }
 
+enum_from_primitive! {
 #[derive(PartialEq, Copy, Clone)]
 pub enum MVClass {
     MV_CLASS_0,
@@ -209,6 +213,7 @@ pub enum MVClass {
     MV_CLASS_8,
     MV_CLASS_9,
     MV_CLASS_10,
+}
 }
 
 enum SignUV {
@@ -237,7 +242,8 @@ pub enum InterpFilter {
     SWITCHABLE,
 }
 
-enum FilterIntraMode {
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
+pub enum FilterIntraMode {
     FILTER_DC_PRED,
     FILTER_V_PRED,
     FILTER_H_PRED,
@@ -245,16 +251,19 @@ enum FilterIntraMode {
     FILTER_PAETH_PRED,
 }
 
-enum CompMode {
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
+pub enum CompMode {
     SINGLE_REFERENCE,
     COMPOUND_REFERENCE,
 }
 
-enum CompRefType {
+#[derive(PartialEq, Copy, Clone, PartialOrd)]
+pub enum CompRefType {
     UNIDIR_COMP_REFERENCE, // Both reference frames from the same group
     BIDIR_COMP_REFERENCE, // One from Group 1 and one from Group 2
 }
 
+enum_from_primitive! {
 #[derive(PartialEq, Copy, Clone, PartialOrd)]
 pub enum RefFrame {
     NONE = -1, // ref[1]=NONE block uses single prediction
@@ -266,6 +275,7 @@ pub enum RefFrame {
     BWDREF_FRAME = 5,
     ALTREF2_FRAME = 6,
     ALTREF_FRAME = 7,
+}
 }
 
 enum MotionMode {
@@ -1195,6 +1205,8 @@ pub struct ModeInfo {
     pub comp_group_idx: usize,
     pub compound_idx: usize,
     pub segment_id: usize,
+    pub y_mode: YMode,
+    pub mvs: [MotionVector; 2],
 }
 
 use self::TxSize::*;

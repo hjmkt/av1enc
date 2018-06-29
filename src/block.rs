@@ -2,6 +2,11 @@
 
 use constants::*;
 use constants::Partition::*;
+use constants::RefFrame::*;
+use constants::CompMode::*;
+use constants::CompRefType::*;
+use constants::YMode::*;
+use common::*;
 
 pub struct LRUnit {
     pub use_wiener: bool,
@@ -22,6 +27,16 @@ pub struct PartitionTree {
     pub q_index: usize,
     pub delta_lf: [isize; FRAME_LF_COUNT],
     pub is_inter: bool,
+    pub ref_frame: [RefFrame; 2],
+    pub comp_mode: CompMode,
+    pub comp_ref_type: CompRefType,
+    pub compound_mode: YMode,
+    pub new_mv: bool,
+    pub zero_mv: bool,
+    pub ref_mv: bool,
+    pub drl_mode: [usize; 8], // FIXME
+    pub use_intrabc: bool,
+    pub mvs: [MotionVector; 2],
 }
 
 impl PartitionTree {
@@ -35,6 +50,16 @@ impl PartitionTree {
         q_index: 0,
         delta_lf: [0; FRAME_LF_COUNT],
         is_inter: false,
+        ref_frame: [LAST_FRAME; 2],
+        comp_mode: SINGLE_REFERENCE,
+        comp_ref_type: UNIDIR_COMP_REFERENCE,
+        compound_mode: NEAREST_NEARESTMV,
+        new_mv: false,
+        zero_mv: false,
+        ref_mv: false,
+        drl_mode: [0; 8],
+        use_intrabc: false,
+        mvs: [MotionVector::new(0, 0); 2],
     }}
 
     pub fn clone(&self) -> PartitionTree { PartitionTree {
@@ -53,6 +78,16 @@ impl PartitionTree {
         q_index: self.q_index,
         delta_lf: self.delta_lf,
         is_inter: self.is_inter,
+        ref_frame: self.ref_frame,
+        comp_mode: self.comp_mode,
+        comp_ref_type: self.comp_ref_type,
+        compound_mode: self.compound_mode,
+        new_mv: self.new_mv,
+        zero_mv: self.zero_mv,
+        ref_mv: self.ref_mv,
+        drl_mode: self.drl_mode,
+        use_intrabc: self.use_intrabc,
+        mvs: self.mvs,
     }}
 }
 

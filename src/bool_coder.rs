@@ -826,7 +826,7 @@ impl BoolCoder {
         self.encode_symbol(mv_hp as i32, out_bits, &mut cdf);
     }
 
-    pub fn encode_bit(&mut self, out_bits: &mut Vec<u8>, tile_cdf: &mut CDF, mv_bit: usize, i: usize, mv_ctx: usize, comp: usize) {
+    pub fn encode_mv_bit(&mut self, out_bits: &mut Vec<u8>, tile_cdf: &mut CDF, mv_bit: usize, i: usize, mv_ctx: usize, comp: usize) {
         let mut cdf: &mut [i32] = &mut tile_cdf.mv_bit[mv_ctx as usize][comp][i];
         self.encode_symbol(mv_bit as i32, out_bits, &mut cdf);
     }

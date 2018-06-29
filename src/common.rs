@@ -6,6 +6,37 @@ use constants::RefFrame::*;
 use self::num::FromPrimitive;
 use frame::*;
 use constants::TxType::*;
+use std::ops::Add;
+use std::ops::Sub;
+
+#[derive(PartialEq, Copy, Clone)]
+pub struct MotionVector {
+    pub x: isize,
+    pub y: isize,
+}
+
+impl MotionVector {
+    pub fn new(x: isize, y: isize) -> MotionVector { MotionVector {
+        x: x,
+        y: y
+    }}
+}
+
+impl Add for MotionVector {
+    type Output = MotionVector;
+
+    fn add(self, rhs: MotionVector) -> MotionVector {
+        MotionVector { x: self.x+rhs.x, y: self.y+rhs.y }
+    }
+}
+
+impl Sub for MotionVector {
+    type Output = MotionVector;
+
+    fn sub(self, rhs: MotionVector) -> MotionVector {
+        MotionVector { x: self.x-rhs.x, y: self.y-rhs.y }
+    }
+}
 
 pub fn get_plane_residual_size(subsize: BlockSize, plane: usize, subsampling_x: bool, subsampling_y: bool) -> BlockSize {
     let subx = if plane>0 { subsampling_x as usize } else { 0 };
